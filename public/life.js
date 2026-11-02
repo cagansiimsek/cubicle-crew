@@ -160,9 +160,10 @@ export class Life {
   // ================================================================ любимци
   /** Свободен любимец (без задача); dogFirst – кучето е по-отзивчиво. */
   freePet(x, y, dogFirst) {
-    const ps = this.o.pets.filter((p) => p.placed && !p.busy && !p.hop);
+    const now = performance.now();
+    const ps = this.o.pets.filter((p) => p.placed && !p.busy && !p.hop && p.ready(now)); // не е вдигнат и не е току-що пуснат
     if (!ps.length) return null;
-    if (dogFirst) { const d = ps.find((p) => p.kind === 'dog'); if (d) return d; }
+    if (dogFirst) { const d = ps.find((p) => p.kind === 'dog') || ps.find((p) => p.look?.sp === 'capybara'); if (d) return d; } // кучето, после спокойната капибара
     return ps.sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y))[0];
   }
 
@@ -206,16 +207,55 @@ export class Life {
       this.nextFollow = now + rnd(3000, 6000);
       const lo = o.L.lounge;
       const w = o.live().find((a) => a.mode === 'walk' && a.x > lo.x && a.path.length);
-      const cat = w && o.pets.find((p) => p.kind === 'cat' && !p.busy && p.mode === 'sit');
+      const cat = w && o.pets.find((p) => (p.kind === 'cat' || p.look?.sp === 'fennec') && !p.busy && p.mode === 'sit' && p.ready(now)); // и фенекът върви след минаващите
       if (cat && Math.random() < 0.35) { const end = w.path[w.path.length - 1]; cat.goNear(end.x + (Math.random() < 0.5 ? -12 : 12), end.y + 6); }
     }
     if (now < this.nextPet) return;
     this.nextPet = now + (this.demo ? rnd(14000, 26000) : rnd(30000, 75000));
-    const free = o.pets.filter((p) => p.placed && !p.busy && !p.hop);
+    const free = o.pets.filter((p) => p.placed && !p.busy && !p.hop && p.ready(now));
     if (!free.length) return;
     const p = pick(free);
-    const ideas = p.kind === 'dog' ? [() => this.fetch(p, now)] : [() => this.sunbeam(p, now), () => this.deskNap(p, now)];
+    const sp = p.look?.sp;
+    const ideas = p.kind === 'dog' ? [() => this.fetch(p, now)]
+      : sp === 'fennec' ? [() => this.dig(p, now), () => this.sunbeam(p, now)]
+      : sp === 'capybara' ? [() => this.soak(p, now), () => this.sunbeam(p, now)]
+      : sp === 'wombat' ? [() => this.zoomies(p, now), () => this.sunbeam(p, now)]
+      : [() => this.sunbeam(p, now), () => this.deskNap(p, now)];
     for (const f of ideas.sort(() => Math.random() - 0.5)) if (f()) return;
+  }
+
+  /** Случайна точка на пода в зоната на любимеца, извън масажния стол (null след няколко опита). */
+  floorSpot(p) {
+    const a = p.area(this.o.L);
+    for (let i = 0; i < 6; i++) {
+      const t = { x: Math.round(rnd(a.x0 + 6, a.x1 - 6)), y: Math.round(rnd(a.y0 + 4, a.y1 - 4)) };
+      if (!p.blocked(t)) return t;
+    }
+    return null;
+  }
+
+  /** Фенек: отива на случаен ъгъл на пода и рови (пясъкът хвърчи), после се прибира. */
+  dig(p, now) {
+    const t = this.floorSpot(p);
+    if (!t) return false;
+    p.errand(this.petPath(p, t.x, t.y), { rest: 'dig', ms: rnd(4000, 8000) }, now);
+    return true;
+  }
+
+  /** Капибара: сяда до фонтанчето (вдясно от него, гледа го) и си почива дълго. */
+  soak(p, now) {
+    const f = this.o.L.lounge.pets?.fountain;
+    if (!f) return false;
+    p.errand(this.petPath(p, f.x + 18, f.base + 2), { rest: 'sit', sleepAfter: 9000, ms: rnd(25000, 45000), face: true }, now);
+    return true;
+  }
+
+  /** Вомбат: кратко „лудо“ тичане напред-назад (rush = 1.9× скорост), после сяда да си почине. */
+  zoomies(p, now) {
+    const a = p.area(this.o.L), y = Math.round(rnd(a.y0 + 6, a.y1 - 6)), x0 = Math.round(a.x0 + 8), x1 = Math.round(a.x1 - 8);
+    if (p.blocked({ x: x0, y }) || p.blocked({ x: x1, y })) return false;
+    p.errand([{ x: x1, y }, { x: x0, y: y + 3 }, { x: x1, y }], { rest: 'sit', sleepAfter: 1500, ms: rnd(6000, 12000), rush: true }, now);
+    return true;
   }
 
   /** Котка: спи в слънчевия сноп на пода под някой прозорец. */
@@ -245,6 +285,19 @@ export class Life {
     }, now);
     p.job.pod = q.i;
     return true;
+  }
+
+  /** Любимец, оставен върху бюро или място на дивана (влачене с мишката): стои там и дреме, докато не дойде човек
+   *  (както котката, която сама се качва на бюро) или не мине много време; после слиза и се връща в зоната си. */
+  perch(p, s, now) {
+    const o = this.o, lo = o.L.lounge;
+    const taken = s.kind === 'desk' ? () => [...o.actors.values()].some((a) => a.pod === s.q.i) : () => [...o.actors.values()].some((a) => a.loc.type === 'sofa' && a.loc.i === s.i);
+    const down = s.kind === 'desk' ? { x: s.q.cx, y: s.q.aisleY } : { x: s.spot.x, y: lo.sofa.base + 8 }; // накъде скача, като слезе
+    const leave = (c, t) => { c.jump(down.x, down.y, t); c.keyOverride = null; c.perched = false; c.away = true; o._petJumpAt = t; };
+    if (taken()) { leave(p, now); return; } // междувременно някой го е заел – слиза веднага
+    p.perched = true; p.keyOverride = s.key; p.path = []; p.mode = 'sit';
+    p.job = { rest: 'sit', sleepAfter: 1600, ms: rnd(90000, 180000), end: taken, since: now, back: [], onLeave: leave };
+    if (s.kind === 'desk') p.job.pod = s.q.i; else p.job.sofa = s.i;
   }
 
   /** Куче: взима топката от играчките и я носи на някого, който почива; той се радва. */

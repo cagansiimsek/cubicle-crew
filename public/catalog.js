@@ -25,7 +25,11 @@ export const SLOTS = {
   cat2:          { group: 'cat',      def: null, pet: 'cat', need: 'cat2.tabby', after: 'cat' }, // котка 2/3: купуват се след предишната
   cat3:          { group: 'cat',      def: null, pet: 'cat', need: 'cat3.extra', after: 'cat2' },
   dog:           { group: 'dog',      def: null, pet: 'dog', starter: 'dog', need: 'dog.extra' },
-  neon:          { group: 'neon',     def: null },
+  // екзотични любимци (фенек, капибара, вомбат…): всяко ново място е с +350 по-скъпо от предишното
+  exotic:        { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic1.extra' },
+  exotic2:       { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic2.extra', after: 'exotic' },
+  exotic3:       { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic3.extra', after: 'exotic2' },
+  neon:         { group: 'neon',     def: null },
   aquarium:      { group: 'aquarium', def: null },
   arcade:        { group: 'arcade',   def: null },
   massage:       { group: 'massage',  def: null },
@@ -39,7 +43,7 @@ export const TABS = [
   { id: 'floor', groups: ['floor', 'rug', 'lrug'] },
   { id: 'furniture', groups: ['sofa', 'chair', 'lamp'] },
   { id: 'decor', groups: ['plants', 'posters', 'window', 'season'] },
-  { id: 'pets', groups: ['cat', 'catslot', 'dog'] },
+  { id: 'pets', groups: ['cat', 'catslot', 'dog', 'exotic'] },
   { id: 'special', groups: ['neon', 'espresso', 'aquarium', 'arcade', 'massage'], merge: true },
   { id: 'avatar', groups: [] },
   { id: 'stats', groups: [] },
@@ -145,6 +149,25 @@ export const ITEMS = [
   // котка за започналите с куче и куче за започналите с котка (alt: всеки може да купи само едното)
   I('cat1.extra', 'catslot', 600, 'Котка', { slot: 'cat', gives: 'cat.grey', alt: true }),
   I('dog.extra', 'catslot', 600, 'Куче', { slot: 'dog', gives: 'dog.bueno', alt: true }),
+  // екзотични места: всяко струва 1000; купуването само отключва мястото – животното (вид и цвят) се избира после, свободно,
+  // и може да са три еднакви. По един цвят от вид е безплатен, останалите са 300 / 500 (екзотични са!); купен цвят важи за всички места.
+  I('exotic1.extra', 'catslot', 1000, 'Екзотично място 1', { slot: 'exotic' }),
+  I('exotic2.extra', 'catslot', 1000, 'Екзотично място 2', { slot: 'exotic2' }),
+  I('exotic3.extra', 'catslot', 1000, 'Екзотично място 3', { slot: 'exotic3' }),
+  // животни (sp = вид, рисува се от Critter в characters.js; c/hi/m/e/eye + p/p2 маркировки, nose = нос за тъмните). Първият на вида е
+  // старото id (записите остават валидни); нови цветове – нови id-та, никога преименуване
+  I('exotic.fennec', 'exotic', 0, 'Фенек – пясъчен', { sp: 'fennec', c: '#d8b27c', hi: '#ecce9c', m: '#f4e8d4', e: '#c89a60', eye: '#1c1410', p: '#2a2220', p2: '#e8b0a0', by: 'TheDjRider' }),
+  I('exotic.fennec.cream', 'exotic', 300, 'Фенек – кремав', { sp: 'fennec', c: '#ecdcc0', hi: '#f8eedc', m: '#fbf4e8', e: '#d8c4a0', eye: '#1c1410', p: '#2a2220', p2: '#e8b0a0', by: 'TheDjRider' }),
+  I('exotic.fennec.pale', 'exotic', 500, 'Фенек – блед', { sp: 'fennec', c: '#f2e8d8', hi: '#fcf8ee', m: '#ffffff', e: '#e2d4ba', eye: '#1c1410', p: '#2a2220', p2: '#e8b0a0', by: 'TheDjRider' }),
+  I('exotic.capybara', 'exotic', 0, 'Капибара – кафява', { sp: 'capybara', c: '#8a5e3c', hi: '#a47650', m: '#6e4a2e', e: '#5e3e26', eye: '#1c1410', p: '#a88460', by: 'TheDjRider' }),
+  I('exotic.capybara.red', 'exotic', 300, 'Капибара – червеникавокафява', { sp: 'capybara', c: '#a65a38', hi: '#c27650', m: '#85402a', e: '#6e3420', eye: '#1c1410', p: '#c48862', by: 'TheDjRider' }),
+  I('exotic.capybara.yellow', 'exotic', 500, 'Капибара – жълтеникавокафява', { sp: 'capybara', c: '#b3905a', hi: '#cbaa72', m: '#8e6d3e', e: '#7a5c32', eye: '#1c1410', p: '#d2b888', by: 'TheDjRider' }),
+  I('exotic.capybara.gray', 'exotic', 300, 'Капибара – сивкавокафява', { sp: 'capybara', c: '#7f7064', hi: '#988878', m: '#5e5248', e: '#4f443a', eye: '#1c1410', p: '#a89c8c', by: 'TheDjRider' }),
+  I('exotic.wombat', 'exotic', 0, 'Вомбат – тъмносив', { sp: 'wombat', c: '#5c585c', hi: '#78747c', m: '#403c42', e: '#34303a', eye: '#d8c8a8', p: '#f4eee0', by: 'TheDjRider' }),
+  I('exotic.wombat.black', 'exotic', 500, 'Вомбат – лъскаво черен', { sp: 'wombat', c: '#26222a', hi: '#524a60', m: '#16121a', e: '#14101a', eye: '#d8c8a8', nose: '#5a4e52', p: '#f4eee0', by: 'TheDjRider' }),
+  I('exotic.wombat.sandy', 'exotic', 300, 'Вомбат – пясъчен', { sp: 'wombat', c: '#b89a6c', hi: '#d0b284', m: '#8e7650', e: '#7a6440', eye: '#1c1410', p: '#5e4a34', by: 'TheDjRider' }),
+  I('exotic.wombat.cream', 'exotic', 500, 'Вомбат – кремав', { sp: 'wombat', c: '#d8c8a8', hi: '#ece0c4', m: '#b4a280', e: '#9c8a68', eye: '#1c1410', p: '#5e4a34', by: 'TheDjRider' }),
+  I('exotic.wombat.tan', 'exotic', 300, 'Вомбат – светлокафяв', { sp: 'wombat', c: '#a8804e', hi: '#c09862', m: '#84603a', e: '#6e4e2c', eye: '#1c1410', p: '#5e4a34', by: 'TheDjRider' }),
   // by = GitHub име на контрибютър, нарисувал предмета (любимец по негов дизайн, вж. CONTRIBUTING.md): името на
   // любимеца е фиксирано в T.pets.breeds, авторът се вижда в магазина и при посочване
   // кучета (породи) – рисуват се от Dog в characters.js. m = муцуна, e = уши, ears flop|up|half, tail long|curl|stub|plume,
@@ -239,16 +262,16 @@ export function buyItem(save, id, slot = null) {
   if (owns(save, id)) return { ok: false, error: 'owned' };
   if (!inSeason(it)) return { ok: false, error: 'season' };
   if (it.slot) {
-    // ново място за любимец: предишната котка трябва да я има, а в офиса – място
+    // ново място за любимец: предишната котка трябва да я има; ако идва с готов любимец (gives) – в офиса трябва да има място
     const s = SLOTS[it.slot];
     if (unlocked(save, it.slot) || (s.after && !unlocked(save, s.after))) return { ok: false, error: 'locked' };
-    if (petCount(save) >= MAX_PETS) return { ok: false, error: 'pets' };
+    if (it.gives && petCount(save) >= MAX_PETS) return { ok: false, error: 'pets' };
   }
   if (save.tokens < it.price) return { ok: false, error: 'funds' };
   save.tokens -= it.price;
   (save.owned ||= []).push(id);
-  // отключен любимец: идва веднага със своята шарка/порода
-  if (it.slot) { (save.equipped ||= {})[it.slot] = it.gives; return { ok: true, slot: it.slot }; }
+  // отключен любимец: идва веднага със своята шарка/порода; място без gives (екзотичните) остава празно до избора на животно
+  if (it.slot) { (save.equipped ||= {})[it.slot] = it.gives ?? null; return { ok: true, slot: it.slot }; }
   // посоченото място (напр. коя котка), иначе първото, което още е на подразбиране
   const slots = (GROUP_SLOTS[it.group] || []).filter((s) => unlocked(save, s));
   const target = (slot && slots.includes(slot) && slot) || slots.find((s) => !save.equipped?.[s] || save.equipped[s] === SLOTS[s].def) || slots[0];

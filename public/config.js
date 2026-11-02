@@ -226,7 +226,7 @@ const T_BG = {
     groups: {
       wall: 'Боя', wainscot: 'Ламперия', floor: 'Под', rug: 'Килим под бюрата', lrug: 'Килим в зоната за почивка', sofa: 'Диван',
       chair: 'Столове', lamp: 'Лампа', plants: 'Растения', posters: 'Постери', window: 'Изглед през прозорците',
-      cat: 'Котка', cat2: 'Още една котка', dog: 'Куче', season: 'Сезонно', neon: 'Неонов надпис', espresso: 'Кафемашина', aquarium: 'Аквариум', arcade: 'Аркада', massage: 'Масажен стол',
+      cat: 'Котка', cat2: 'Още една котка', dog: 'Куче', exotic: 'Екзотичен любимец', season: 'Сезонно', neon: 'Неонов надпис', espresso: 'Кафемашина', aquarium: 'Аквариум', arcade: 'Аркада', massage: 'Масажен стол',
     },
     slots: { 'rug.team0': 'Екип 1', 'rug.team1': 'Екип 2', 'chair.team0': 'Под-агенти', 'chair.team1': 'Екип 2', 'chair.lead': '★ Оркестратори' },
     by: (h) => `от ${h.includes(' ') ? h : '@' + h}`, // GitHub акаунт с @, истинско име без
@@ -241,11 +241,23 @@ const T_BG = {
     progress: (v, g) => `${v} / ${g}`,
     unlocked: 'отключено',
     pets: {
-      cats: ['Котка 1', 'Котка 2', 'Котка 3'], dog: 'Куче', away: 'Прибери у дома', back: 'Върни в офиса', crew: 'Любимци на контрибютъри',
+      cats: ['Котка 1', 'Котка 2', 'Котка 3'], dog: 'Куче', exotic: ['Екзотично място 1', 'Екзотично място 2', 'Екзотично място 3'], away: 'Прибери у дома', back: 'Върни в офиса', crew: 'Любимци на контрибютъри',
       unlock: (p) => `Идва с шарка „${p}“; после можеш да ѝ избереш всяка купена шарка.`,
       unlockDog: (p) => `Идва като ${p.toLowerCase()}; после можеш да му избереш всяка купена порода.`,
+      unlockExotic: () => 'Купуваш само мястото – после избираш кое животно да е в него и в кой цвят. Можеш да имаш и три еднакви.',
       home: 'у дома', full: 'Няма място', name: 'Име', rename: 'Преименувай', save: 'Запази',
-      limit: 'Най-много 3 любимци в офиса: до 3 котки или 2 котки и куче. Прибраните остават твои и могат да се върнат.',
+      kinds: { cat: 'Котки', dog: 'Кучета', exotic: 'Екзотични' },
+      about: {
+        cat: 'Всяка котка има своя шарка.',
+        dog: 'Едно куче – избираш му порода.',
+        exotic: 'Фенек, капибара и вомбат – всеки в няколко цвята (още идват). Купуваш място и избираш животно за него: по един цвят от вид е безплатен, останалите се купуват, и можеш да имаш и три еднакви.',
+      },
+      more: { cat: 'Още котки', dog: 'Вземи куче' },
+      inOffice: (n, max) => `В офиса: ${n}/${max}`, pickOne: 'Избери животно за това място.', empty: 'празно', inSlot: (t) => `в: ${t}`,
+      chooseFor: (t) => `Избираш за: ${t}`, needSlot: 'Първо купи място', needPrev: (t) => `Първо: ${t}`,
+      unlockCat: 'Всяка нова котка идва с шарка; после ѝ избираш всяка купена шарка.',
+      exoPreview: 'Ето кои животни има – купи място, за да ги доведеш в офиса.',
+      limit: 'Най-много 3 любимци общо в офиса – всякаква комбинация от котки, куче и екзотични (например 3 котки или 2 котки и куче). Прибраните остават твои и могат да се върнат.',
     },
     avatar: {
       body: 'Тяло', male: 'Мъж', female: 'Жена', style: 'Прическа',
@@ -266,6 +278,11 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.20.0': [
+        ['Екзотични любимци', 'Фенек, капибара и вомбат – общо 12 цвята. В „Любимци“ има три екзотични места по 1000 монети; купуваш мястото, а животното (вид и цвят) избираш сам, дори три еднакви. По един цвят от животно е безплатен, останалите струват 300 или 500 монети. Фенекът рови и върви след хората, капибарата сяда до фонтанчето, вомбатът тича на изблици.'],
+        ['По-ясна страница „Любимци“', 'Любимците са по видове – котки, кучета, екзотични – с брояч „В офиса: 2/3“ и бутони за бърз преход. Местата са в един ред, а всички животни се виждат с картинка и цена още преди да купиш място. Заключените места на котките са заедно – вижда се и третата котка.'],
+        ['Носи любимците', 'Задръж любимец с мишката и го носи – за главата, за тялото (като банан) или за опашката; всяка хватка има своя поза. Остави го на пода (връща се сам), на свободно бюро или на дивана. Разклати го и ще се замае.'],
+      ],
       '2.19.9': [['/clear не е срив', 'След /clear старата сесия просто си тръгва, вместо да остане посивяла и заспала на бюрото.']],
       '2.19.8': [['По-чист изход', 'Приложението вече не записва грешка в лога, когато инсталатор или обновяване го затвори, докато е включен прозрачният фон.']],
       '2.19.7': [['Под-агентите на Antigravity си тръгват', 'Под-агентите влизат като под-агенти, мислят, докато главният агент ги чака, и си тръгват, щом свършат – вече не остават посивели на бюрата. Главният агент е лилав (делегира), докато те работят.']],
@@ -327,10 +344,11 @@ const T_BG = {
   news: { label: 'Ново', bueno: ['Буено е в магазина', 'Безплатна нова порода за кучето ти – Магазин → Любимци'] },
   // офисните любимци: имена по подразбиране (по място) и подсказката при посочване
   pets: {
-    names: { cat: 'Мица', cat2: 'Тигрото', cat3: 'Писана', dog: 'Шаро' },
-    breeds: { 'dog.bueno': 'Буено' }, // порода със собствено име (вместо това на мястото)
-    kinds: { cat: 'Офисна котка', dog: 'Офисно куче' },
-    tip: 'Клик – погали · двоен клик – име и външен вид',
+    names: { cat: 'Мица', cat2: 'Тигрото', cat3: 'Писана', dog: 'Шаро', exotic: 'Сахара', exotic2: 'Мочи', exotic3: 'Кубчо' },
+    // порода със собствено име (вместо това на мястото)
+    breeds: { 'dog.bueno': 'Буено', 'exotic.fennec': 'Сахара', 'exotic.fennec.cream': 'Лате', 'exotic.fennec.pale': 'Перла', 'exotic.capybara': 'Мочи', 'exotic.capybara.red': 'Ръжди', 'exotic.capybara.yellow': 'Меденик', 'exotic.capybara.gray': 'Пепел', 'exotic.wombat': 'Пушек', 'exotic.wombat.black': 'Оникс', 'exotic.wombat.sandy': 'Дюна', 'exotic.wombat.cream': 'Бисквита', 'exotic.wombat.tan': 'Карамел' },
+    kinds: { cat: 'Офисна котка', dog: 'Офисно куче', exotic: 'Екзотичен любимец' },
+    tip: 'Клик – погали · задръж и влачи – вдигни · двоен клик – име и външен вид',
   },
   // начална настройка (първо пускане)
   setup: {
@@ -545,7 +563,7 @@ const T_EN = {
     groups: {
       wall: 'Paint', wainscot: 'Wainscoting', floor: 'Floor', rug: 'Office rug', lrug: 'Lounge rug', sofa: 'Sofa',
       chair: 'Chairs', lamp: 'Lamp', plants: 'Plants', posters: 'Posters', window: 'Window view',
-      cat: 'Cat', cat2: 'One more cat', dog: 'Dog', season: 'Seasonal', neon: 'Neon sign', espresso: 'Coffee machine', aquarium: 'Aquarium', arcade: 'Arcade', massage: 'Massage chair',
+      cat: 'Cat', cat2: 'One more cat', dog: 'Dog', exotic: 'Exotic pet', season: 'Seasonal', neon: 'Neon sign', espresso: 'Coffee machine', aquarium: 'Aquarium', arcade: 'Arcade', massage: 'Massage chair',
     },
     slots: { 'rug.team0': 'Team 1', 'rug.team1': 'Team 2', 'chair.team0': 'Sub-agents', 'chair.team1': 'Team 2', 'chair.lead': '★ Leads' },
     by: (h) => `by ${h.includes(' ') ? h : '@' + h}`,
@@ -560,11 +578,23 @@ const T_EN = {
     progress: (v, g) => `${v} / ${g}`,
     unlocked: 'unlocked',
     pets: {
-      cats: ['Cat 1', 'Cat 2', 'Cat 3'], dog: 'Dog', away: 'Send home', back: 'Bring back', crew: 'Contributor pets',
+      cats: ['Cat 1', 'Cat 2', 'Cat 3'], dog: 'Dog', exotic: ['Exotic slot 1', 'Exotic slot 2', 'Exotic slot 3'], away: 'Send home', back: 'Bring back', crew: 'Contributor pets',
       unlock: (p) => `Comes as a ${p.toLowerCase()}; then you can give it any pattern you own.`,
       unlockDog: (p) => `Comes as a ${p.toLowerCase()}; then you can make it any breed you own.`,
+      unlockExotic: () => 'You only buy the slot – then you pick which animal lives in it, and in which colour. You can even have three of the same.',
       home: 'at home', full: 'No room', name: 'Name', rename: 'Rename', save: 'Save',
-      limit: 'Up to 3 pets in the office: 3 cats, or 2 cats and a dog. Pets sent home stay yours and can come back.',
+      kinds: { cat: 'Cats', dog: 'Dogs', exotic: 'Exotic' },
+      about: {
+        cat: 'Each cat has its own pattern.',
+        dog: 'One dog – pick a breed.',
+        exotic: 'Fennec fox, capybara and wombat, each in several colours (more are coming). You buy a slot and pick an animal for it: one colour per animal is free, the others are bought, and you can even have three of the same.',
+      },
+      more: { cat: 'More cats', dog: 'Get a dog' },
+      inOffice: (n, max) => `In the office: ${n}/${max}`, pickOne: 'Pick an animal for this slot.', empty: 'empty', inSlot: (t) => `in ${t}`,
+      chooseFor: (t) => `Choosing for: ${t}`, needSlot: 'Buy a slot first', needPrev: (t) => `Needs ${t}`,
+      unlockCat: 'Each new cat comes with a pattern; then you can give it any pattern you own.',
+      exoPreview: 'Here is every animal – buy a slot to bring them to the office.',
+      limit: 'Up to 3 pets in the office in total – any mix of cats, a dog and exotic pets (for example 3 cats, or 2 cats and a dog). Pets sent home stay yours and can come back.',
     },
     avatar: {
       body: 'Body', male: 'Man', female: 'Woman', style: 'Hairstyle',
@@ -584,6 +614,11 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.20.0': [
+        ['Exotic pets', 'A fennec fox, a capybara and a wombat – 12 colours in all. Pets has three exotic slots at 1000 coins each; you buy a slot and choose the animal (species and colour) yourself – one colour of each animal is free, the others cost 300 or 500, even three of the same. The fennec digs and follows people around, the capybara sits by the fountain and the wombat runs in sudden bursts.'],
+        ['A clearer Pets page', 'Pets are grouped by kind – cats, dogs, exotic – with an "In the office: 2/3" counter and quick-jump buttons. The slots sit in one row, and every animal is visible with its picture and price even before you buy a slot. The locked slots of each kind are shown together – so the third cat is visible too.'],
+        ['Pick pets up', 'Hold a pet with the mouse and carry it – by the head, by the body (banana style) or by the tail; each grip has its own pose. Put it down on the floor (it walks back by itself), on a free desk or on the sofa. Shake it and it gets dizzy.'],
+      ],
       '2.19.9': [['/clear is not a crash', 'After /clear the old session simply leaves instead of staying greyed out and asleep at its desk.']],
       '2.19.8': [['Cleaner exit', 'The app no longer writes an error to its log when an installer or update closes it while the transparent background is on.']],
       '2.19.7': [['Antigravity sub-agents leave', 'Sub-agents walk in as sub-agents, keep thinking while the main agent waits for them and leave once they are done – no more greyed-out leftovers at the desks. The main agent is purple (delegating) while they work.']],
@@ -644,10 +679,10 @@ const T_EN = {
   },
   news: { label: 'New', bueno: ['Bueno is in the shop', 'A free new breed for your dog – Shop → Pets'] },
   pets: {
-    names: { cat: 'Misty', cat2: 'Tiger', cat3: 'Luna', dog: 'Rex' },
-    breeds: { 'dog.bueno': 'Bueno' },
-    kinds: { cat: 'Office cat', dog: 'Office dog' },
-    tip: 'Click to pet · double-click to rename or change the look',
+    names: { cat: 'Misty', cat2: 'Tiger', cat3: 'Luna', dog: 'Rex', exotic: 'Sahara', exotic2: 'Mochi', exotic3: 'Cubey' },
+    breeds: { 'dog.bueno': 'Bueno', 'exotic.fennec': 'Sahara', 'exotic.fennec.cream': 'Latte', 'exotic.fennec.pale': 'Pearl', 'exotic.capybara': 'Mochi', 'exotic.capybara.red': 'Rusty', 'exotic.capybara.yellow': 'Honey', 'exotic.capybara.gray': 'Ash', 'exotic.wombat': 'Smokey', 'exotic.wombat.black': 'Onyx', 'exotic.wombat.sandy': 'Dune', 'exotic.wombat.cream': 'Biscuit', 'exotic.wombat.tan': 'Toffee' },
+    kinds: { cat: 'Office cat', dog: 'Office dog', exotic: 'Exotic pet' },
+    tip: 'Click to pet · hold and drag to pick up · double-click to rename or change the look',
   },
   setup: {
     hello: 'Welcome to Cubicle Crew!',
@@ -713,6 +748,8 @@ const T_EN = {
     'cat1.extra': 'Cat', 'dog.extra': 'Dog',
     'dog.bueno': 'Bueno Mixed', 'dog.beagle': 'Beagle', 'dog.golden': 'Golden retriever', 'dog.black': 'Black labrador', 'dog.dachshund': 'Dachshund', 'dog.corgi': 'Corgi',
     'dog.husky': 'Husky', 'dog.dalmatian': 'Dalmatian', 'dog.pug': 'Pug',
+    'exotic1.extra': 'Exotic slot 1', 'exotic2.extra': 'Exotic slot 2', 'exotic3.extra': 'Exotic slot 3',
+    'exotic.fennec': 'Fennec fox – sandy', 'exotic.fennec.cream': 'Fennec fox – cream', 'exotic.fennec.pale': 'Fennec fox – pale', 'exotic.capybara': 'Capybara – brown', 'exotic.capybara.red': 'Capybara – reddish-brown', 'exotic.capybara.yellow': 'Capybara – yellowish-brown', 'exotic.capybara.gray': 'Capybara – gray-brown', 'exotic.wombat': 'Wombat – dark grey', 'exotic.wombat.black': 'Wombat – glossy black', 'exotic.wombat.sandy': 'Wombat – sandy', 'exotic.wombat.cream': 'Wombat – cream', 'exotic.wombat.tan': 'Wombat – tan',
     'season.pumpkins': 'Pumpkins', 'season.tree': 'Christmas tree', 'season.tulips': 'Tulips', 'season.fan': 'Standing fan',
     'window.city': 'City', 'window.sea': 'Sea', 'window.mountains': 'Mountains',
     'neon.code': 'Neon sign', 'neon.cheers': 'Cheers', 'neon.metal': 'Beer & metal', 'espresso.pro': 'Espresso machine', 'aquarium.reef': 'Aquarium', 'arcade.retro': 'Arcade cabinet', 'massage.chair': 'Massage chair',

@@ -8,7 +8,8 @@ import { gradeOf, applyGrade, lightCanvas, sunPatches, drawSunPatches, drawSunBe
 const NO_WX = { kind: 'cloudy', temp: null, pop: null };
 import { resolveDecor, AVATAR, SLOTS, PET_SLOTS } from './catalog.js';
 import { drawScreen } from './screens.js';
-import { Actor, Cat, Dog, DART_CYCLE, DART_RELEASE } from './characters.js';
+import { Actor, Cat, Dog, Critter, DART_CYCLE, DART_RELEASE, HELD_LIFT } from './characters.js';
+import { grabZone, ShakeDetector, nearestFree, surfaceAt, inRect } from './petdrag.js';
 import { Life } from './life.js';
 import { avatarLook } from './sprites.js';
 import { prefs } from './prefs.js';
@@ -23,7 +24,10 @@ const LOUNGE = new Set(['sofa', 'coffee', 'cooler', 'lounge', 'darts', 'arcade',
 // екипи 0/1 = двете оркестраторски бюра; 2–4 = оркестратори на горещо бюро (3-та+ работеща сесия на под-агентско бюро)
 const TEAM_MUGS = ['#2fa8a8', '#d060b0', '#a8d040', '#9a5a32', '#5a5ad0'], NO_TEAM_MUG = '#e8e4dc';
 // откъде тръгва всеки любимец (част от зоната за почивка), за да не се появят един върху друг
-const PET_START = { cat: 0.5, cat2: 0.2, cat3: 0.82, dog: 0.36 };
+const PET_START = { cat: 0.5, cat2: 0.2, cat3: 0.82, dog: 0.36, exotic: 0.66, exotic2: 0.12, exotic3: 0.92 };
+const PET_CLASS = { cat: Cat, dog: Dog, exotic: Critter };
+// бюрото с монитора (логически координати): там любимец може да се остави, а на пода е „блокирано“
+const deskRect = (q) => ({ x0: q.x + 6, y0: q.y + 8, x1: q.x + 66, y1: q.y + 50 });
 
 // примигване при включване: [до мс, яркост]
 const LIGHT_FLICKER = [[60, 0.9], [170, 0], [230, 0.8], [400, 0.08], [460, 1], [580, 0.3], [640, 1], [740, 0.6]];
@@ -38,6 +42,8 @@ export class Office {
     this.teams = new Array(CFG.MAX_TEAMS).fill(null); // id на оркестратора за всеки екип
     this.decor = resolveDecor({});   // обзавеждането (catalog.js); setDecor() го сменя
     this.petBySlot = {};              // любимците по място (cat, cat2, cat3, dog)
+    this.heldPet = null;              // любимецът, който се носи с мишката (grabPet/dragPet/dropPet)
+    this.shake = new ShakeDetector(); // разтърсване на държан любимец -> замайване
     this.pets = [];
     this.petNames = {};               // save.petNames (портфейлът ги сменя)
     this.syncPets();
@@ -174,7 +180,7 @@ export class Office {
       const look = d[slot];
       if (!look) { delete this.petBySlot[slot]; continue; }
       if (!this.petBySlot[slot]) {
-        const p = new (SLOTS[slot].pet === 'dog' ? Dog : Cat)(look, PET_START[slot] ?? 0.5);
+        const p = new PET_CLASS[SLOTS[slot].pet](look, PET_START[slot] ?? 0.5);
         p.slot = slot;
         this.petBySlot[slot] = p;
       }
@@ -182,14 +188,68 @@ export class Office {
     }
     // режим „Фокус“: без любимци (остават си записани – връщат се при изключване)
     this.pets = prefs.focus ? [] : PET_SLOTS.map((s) => this.petBySlot[s]).filter(Boolean);
+    if (this.heldPet && !this.pets.includes(this.heldPet)) this.heldPet = null; // любимецът в ръката е изчезнал (прибран/Фокус)
   }
 
   /** Галене: любимецът сяда, над него – сърчица. */
-  petPet(p, now = performance.now()) { p.pet(now); this.fx.hearts(p.x, p.y - 16); sfx(p.kind === 'dog' ? 'woof' : 'purr', (p.x / this.room.W) * 1.4 - 0.7); }
+  petSound(p) { return p.kind === 'dog' ? 'woof' : p.kind === 'exotic' ? (p.look.sp === 'fennec' ? 'yip' : 'chirp') : 'purr'; }
+  petPet(p, now = performance.now()) { p.pet(now); this.fx.hearts(p.x, p.y - 16); sfx(this.petSound(p), (p.x / this.room.W) * 1.4 - 0.7); }
+
+  // ---- вдигане и носене на любимец с мишката (ui.js вика тези три; чистата логика е в petdrag.js) ----
+  /** Подът, по който може да се пусне любимец: цялата стая под стената. */
+  floorBounds() { const L = this.L; return { x0: 6, x1: L.W - 6, y0: CFG.WALL_H + 12, y1: L.H - 3 }; }
+  /** За коя част е натиснат любимецът в точка m (логически): 'head' | 'body' | 'tail' – напред е накъдето гледа. */
+  petZone(p, m) { return grabZone((m.x - p.x) * (p.flip ? -1 : 1), m.y - p.y); }
+  /** Вдига любимеца с позата за дадената част (zone се взима при натискането, а не при началото на влаченето). */
+  grabPet(p, zone, now = performance.now()) {
+    p.grab(now, zone);
+    this.heldPet = p; this.shake.reset();
+    sfx('squeak', (p.x / this.room.W) * 1.4 - 0.7);
+  }
+  /** Държаният любимец следва ръката; бързо разтърсване го замайва. */
+  dragPet(p, m, now = performance.now()) {
+    const x = clamp(m.x, 4, this.L.W - 4), y = clamp(m.y, 8, this.L.H - HELD_LIFT - 2);
+    p.dragTo(x, y, now);
+    if (this.shake.push(x, now)) p.dizzyUntil = now + 2800;
+  }
+  /** Повърхности, на които може да се остави любимец: бюра без човек и без друг любимец, свободни места на дивана. */
+  perchSurfaces() {
+    const L = this.L, lo = L.lounge, out = [], actors = [...this.actors.values()];
+    const busyDesk = new Set(actors.map((a) => a.pod).filter((i) => i >= 0)), petDesk = new Set(this.pets.filter((x) => x.job?.pod != null).map((x) => x.job.pod));
+    for (const q of L.pods) {
+      out.push({ kind: 'desk', q, rect: deskRect(q), spot: { x: q.x + POD.keyboard.x + 8, y: q.y + POD.keyboard.y + 4 }, key: q.y + POD.depthDesk + 0.5, free: !busyDesk.has(q.i) && !petDesk.has(q.i) });
+    }
+    const busySofa = new Set(actors.filter((a) => a.loc.type === 'sofa').map((a) => a.loc.i)), petSofa = new Set(this.pets.filter((x) => x.job?.sofa != null).map((x) => x.job.sofa));
+    lo.spots.sofa?.forEach((s, i) => {
+      out.push({ kind: 'sofa', i, rect: { x0: s.x - 13, y0: lo.sofa.base - 26, x1: s.x + 13, y1: lo.sofa.base + 2 }, spot: { x: s.x, y: s.y }, key: lo.sofa.base + 1.5, free: !busySofa.has(i) && !petSofa.has(i) });
+    });
+    return out;
+  }
+  /** Пуска го: ако ръката е над свободно бюро или място на дивана – остава там; иначе пада на пода под него
+   *  (избутан извън бюрата, масажния стол и стените). */
+  dropPet(p, now = performance.now()) {
+    p.avoid = this.room.massage;
+    const surf = surfaceAt(p.x, p.y - HELD_LIFT, this.perchSurfaces());
+    if (surf) p.release(now, surf.spot.x, surf.spot.y, { arc: 6, key: surf.key, then: (pet, t) => this.life.perch(pet, surf, t) });
+    else {
+      const desks = this.L.pods.map(deskRect);
+      const t = nearestFree(p.x, p.y, this.floorBounds(), (pt) => p.blocked(pt) || desks.some((r) => inRect(pt, r)));
+      p.release(now, t.x, t.y);
+    }
+    this.heldPet = null;
+  }
+  /** Току-що се е приземил: тупване, после глас и сърчица (ако не е замаян). */
+  petLanded(p, now) {
+    const pan = (p.x / this.room.W) * 1.4 - 0.7;
+    sfx('thud', pan);
+    if (now < p.dizzyUntil) return;
+    this.fx.hearts(p.x, p.y - 16);
+    setTimeout(() => sfx(this.petSound(p), pan), 220);
+  }
 
   /** Лакомство в купичката bowl (обект от room.objects): най-близкият свободен любимец идва да яде. */
   feedPet(bowl) {
-    const fed = this.pets.filter((p) => p.placed && !p.food && !p.hop);
+    const fed = this.pets.filter((p) => p.placed && !p.food && !p.hop && !p.hanging);
     if (!fed.length) return false;
     const bx = bowl.x - 4, by = bowl.y + bowl.img.height + 1; // отляво на купичката (вдясно е фонтанчето), с глава към нея
     const dist = (a) => Math.hypot(a.x - bx, a.y - by) + (a.busy ? 1e4 : 0); // свободните първо
@@ -201,9 +261,9 @@ export class Office {
   }
 
   /** Любимецът под мишката (най-предният). */
-  petAt(x, y) {
+  petAt(x, y, pad = 0) {
     let best = null;
-    for (const p of this.pets) if (p.placed && p.hit(x, y) && (!best || p.y > best.y)) best = p;
+    for (const p of this.pets) if (p.placed && !p.hanging && p.hit(x, y, pad) && (!best || p.y > best.y)) best = p;
     return best;
   }
 
@@ -704,11 +764,12 @@ export class Office {
     const nearDoor = now < this.pokes.doorUntil || [...this.actors.values()].some((a) => Math.abs(a.x - L.door.cx) < 10 && a.y < L.door.floorY + 14 && a.mode !== 'seated') || this.life.nearDoor();
     this.room.doorOpen = clamp(this.room.doorOpen + (nearDoor ? dt * 4 : -dt * 2.5), 0, 1);
     // кучето понякога отива при някого, който почива (стои на място в зоната за почивка)
-    const people = this.pets.some((p) => p.kind === 'dog') ? [...this.actors.values()].filter((a) => a.mode === 'idleSpot' && LOUNGE.has(a.loc.type)) : [];
+    const people = this.pets.some((p) => p.kind === 'dog' || p.look.sp === 'capybara') ? [...this.actors.values()].filter((a) => a.mode === 'idleSpot' && LOUNGE.has(a.loc.type)) : [];
     const walkers = this.pets.length ? [...this.actors.values()].filter((a) => a.mode === 'walk') : [];
     for (const c of this.pets) {
       c.avoid = this.room.massage; c.update(dt, now, L, people, walkers);
       if (c.ate) { c.ate = false; this.fx.hearts(c.x, c.y - 16); sfx('munch', (c.x / this.room.W) * 1.4 - 0.7); } // хапна лакомството
+      if (c.landed) { c.landed = null; this.petLanded(c, now); } // пуснат любимец се е приземил
     } // любимците не застават в масажния стол
     this.life.update(dt, now);
     // прашинки в слънчевите снопове
@@ -737,6 +798,7 @@ export class Office {
       if (a.pod >= 0 && (a.vstate === 'typing' || a.vstate === 'running')) return true; // пози по 75–110 мс
     }
     if (this.pokes.active(performance.now())) return true; // побутнат предмет (кафе, принтер, прозорец…)
+    if (this.pets.some((p) => p.hanging || p.fall || p.dizzyUntil > performance.now())) return true; // носен, пада или е замаян любимец
     if (performance.now() - this.lights.at < 900 || boardMoving(this.board, performance.now())) return true; // лампите примигват, екранът се движи
     if (this.life.animating(performance.now())) return true; // птичка лети, куриер ходи, котка скача
     const d = this.room.doorOpen;
@@ -859,7 +921,7 @@ export class Office {
       const k = a.depth(L);
       items.push({ key: k, actor: a, seated: occupant.get(a.pod) === a, fn: () => { a.draw(ctx, now, 'body'); if (!occupant.has(a.pod) || occupant.get(a.pod) !== a) a.draw(ctx, now, 'front'); } });
     }
-    for (const c of this.pets) items.push({ key: c.keyOverride ?? c.y, fn: () => c.draw(ctx, now) }); // котката на бюрото – над плота
+    for (const c of this.pets) items.push({ key: c.hanging ? 1e6 : (c.keyOverride ?? c.y), fn: () => c.render(ctx, now) }); // котката на бюрото – над плота; вдигнатият е най-отгоре
     this.life.items((key, fn) => items.push({ key, fn }), ctx, now);
     if (room.aquarium) items.push({ key: room.aquarium.key + 0.5, fn: () => drawAquariumFish(ctx, room.aquarium, now) });
     if (room.arcade) items.push({ key: room.arcade.key + 0.5, fn: () => drawArcadeScreen(ctx, room.arcade, now) });
