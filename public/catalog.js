@@ -25,11 +25,11 @@ export const SLOTS = {
   cat2:          { group: 'cat',      def: null, pet: 'cat', need: 'cat2.tabby', after: 'cat' }, // котка 2/3: купуват се след предишната
   cat3:          { group: 'cat',      def: null, pet: 'cat', need: 'cat3.extra', after: 'cat2' },
   dog:           { group: 'dog',      def: null, pet: 'dog', starter: 'dog', need: 'dog.extra' },
-  // екзотични любимци (фенек, капибара, вомбат…): всяко ново място е с +350 по-скъпо от предишното
+  // екзотични любимци (фенек, капибара, вомбат…): три места по 1000, животното се избира отделно
   exotic:        { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic1.extra' },
   exotic2:       { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic2.extra', after: 'exotic' },
   exotic3:       { group: 'exotic',   def: null, pet: 'exotic', need: 'exotic3.extra', after: 'exotic2' },
-  neon:         { group: 'neon',     def: null },
+  neon:          { group: 'neon',     def: null },
   aquarium:      { group: 'aquarium', def: null },
   arcade:        { group: 'arcade',   def: null },
   massage:       { group: 'massage',  def: null },
