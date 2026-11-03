@@ -173,6 +173,9 @@ export class Model {
     const lead = this.agents.get(m.session);
     if (!lead) return;
     let target = lead, best = -1;
+    // "input needed" (AskUserQuestion, план, празен prompt) винаги е на оркестратора – под-агентите не питат.
+    // Иначе молбата отиваше при работещ под-агент и следващото му събитие я махаше – водачът стоеше „без работа“.
+    if (m.kind === 'input') { lead.ask = { kind: 'input', since: now, req: null }; return; }
     const team = [lead, ...[...lead.children].map((id) => this.agents.get(id)).filter((c) => c && !c.done && !c.leaving)];
     for (const a of team) for (const p of a.pending.values()) if (!DELEGATE_TOOLS.has(p.tool) && p.start > best) { best = p.start; target = a; }
     target.ask = { kind: m.kind === 'input' ? 'input' : 'permission', since: now, req: m.req || (target.ask?.req && this.prompts.has(target.ask.req.id) ? target.ask.req : null) };

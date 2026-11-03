@@ -101,6 +101,25 @@ test('Model: събития, обновяване на етикет, под-аг
   assert.equal(a.compactedAt, 400);
 });
 
+test('Model: "input needed" е на оркестратора, дори под-агентът му работи', () => {
+  const m = new Model();
+  m.sessions([{ agent: 'L', label: 'aaudio', status: 'busy' }], 100);
+  const lead = m.agents.get('L');
+  m.ingest({ agent: 'L', label: 'aaudio', type: 'tool_start', id: 'a1', tool: 'Agent', detail: 'research' }, 200);
+  m.ingest({ agent: 'S', label: 'aaudio', subagent: true, parent: 'L', parent_tool_use_id: 'a1', type: 'tool_start', id: 's1', tool: 'WebSearch', detail: 'x' }, 300);
+  const sub = m.agents.get('S');
+  m.sessions([{ agent: 'L', label: 'aaudio', status: 'waiting', waitingFor: 'input needed' }], 400);
+  m.ingest({ agent: 'S', label: 'aaudio', subagent: true, parent: 'L', type: 'tool_end', id: 's1', tool: 'WebSearch' }, 3000);
+  assert.equal(m.stateOf(lead, 3100), 'waiting');
+  assert.notEqual(m.stateOf(sub, 3100), 'waiting');
+  // разрешение все още отива при този, който е пуснал инструмента
+  m.sessions([{ agent: 'L', label: 'aaudio', status: 'busy' }], 3200);
+  m.ingest({ agent: 'S', label: 'aaudio', subagent: true, parent: 'L', type: 'tool_start', id: 's2', tool: 'Bash', detail: 'ls' }, 3300);
+  m.sessions([{ agent: 'L', label: 'aaudio', status: 'waiting', waitingFor: 'permission prompt' }], 3400);
+  assert.equal(sub.ask?.kind, 'permission');
+  assert.equal(lead.ask, null);
+});
+
 test('External: вход за външни агенти и hook събития', () => {
   const events = [];
   let scans = 0;
