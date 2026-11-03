@@ -278,6 +278,9 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.20.1': [
+        ['Въпросите към теб се виждат', 'Когато главният агент те пита нещо (AskUserQuestion), докато негов под-агент още работи, сега той светва в червено и чака теб. Досега „чакането“ отиваше при под-агента и изчезваше при следващата му стъпка – главният стоеше като без работа.'],
+      ],
       '2.20.0': [
         ['Екзотични любимци', 'Фенек, капибара и вомбат – общо 12 цвята. В „Любимци“ има три екзотични места по 1000 монети; купуваш мястото, а животното (вид и цвят) избираш сам, дори три еднакви. По един цвят от животно е безплатен, останалите струват 300 или 500 монети. Фенекът рови и върви след хората, капибарата сяда до фонтанчето, вомбатът тича на изблици.'],
         ['По-ясна страница „Любимци“', 'Любимците са по видове – котки, кучета, екзотични – с брояч „В офиса: 2/3“ и бутони за бърз преход. Местата са в един ред, а всички животни се виждат с картинка и цена още преди да купиш място. Заключените места на котките са заедно – вижда се и третата котка.'],
@@ -614,6 +617,9 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.20.1': [
+        ['Questions to you show up', 'When the main agent asks you something (AskUserQuestion) while one of its sub-agents is still working, it now turns red and waits for you. Before, the "waiting" went to the sub-agent and vanished at its next step – the main agent looked idle.'],
+      ],
       '2.20.0': [
         ['Exotic pets', 'A fennec fox, a capybara and a wombat – 12 colours in all. Pets has three exotic slots at 1000 coins each; you buy a slot and choose the animal (species and colour) yourself – one colour of each animal is free, the others cost 300 or 500, even three of the same. The fennec digs and follows people around, the capybara sits by the fountain and the wombat runs in sudden bursts.'],
         ['A clearer Pets page', 'Pets are grouped by kind – cats, dogs, exotic – with an "In the office: 2/3" counter and quick-jump buttons. The slots sit in one row, and every animal is visible with its picture and price even before you buy a slot. The locked slots of each kind are shown together – so the third cat is visible too.'],
