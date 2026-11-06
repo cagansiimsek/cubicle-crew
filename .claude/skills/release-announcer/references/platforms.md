@@ -38,7 +38,9 @@ stop and report when something doesn't match instead of clicking around blindly.
 
 ## Facebook
 
-- Personal profile: https://www.facebook.com/ → "What's on your mind?". Personal posts
+- Personal profile: https://www.facebook.com/ → "What's on your mind?". (2026-11-06: text = synthetic
+  `text/plain` paste into the dialog's editor – scope to `[role=dialog]`, a Messenger chat box is also
+  contenteditable; image = `file_upload` into the hidden `input[type=file]` inside the dialog – works.) Personal posts
   **cannot be scheduled**; always draft mode. Check the audience selector (Public vs
   Friends) matches the config, but don't change it without the config saying so.
 - Page: scheduling works through Meta Business Suite
