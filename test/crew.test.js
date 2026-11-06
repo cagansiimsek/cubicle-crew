@@ -101,3 +101,14 @@ test('office: табела и картини', () => {
   assert.equal(setOffice(save, { picture: 1, pic: null }).ok, true);
   assert.equal(save.pictures[1], null);
 });
+
+test('crew: „Това съм аз“ – само за проект, null = пак автоматично', () => {
+  const save = {};
+  assert.equal(setCrew(save, { key: 'p:web', me: true }).ok, true);
+  assert.equal(save.crewMe, 'p:web');
+  assert.equal(setCrew(save, { key: 't:explore', me: true }).ok, false);
+  assert.equal(setCrew(save, { key: 'p:web#2', me: true }).ok, false);
+  assert.equal(save.crewMe, 'p:web');
+  assert.equal(setCrew(save, { me: null }).ok, true);
+  assert.equal(save.crewMe, undefined);
+});

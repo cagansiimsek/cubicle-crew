@@ -53,8 +53,8 @@ export class Tokens {
       this.save.avatar = m.avatar || null;
       this.office.setAvatar(avatarOf(this.save));
       // екипът: имената и лицата на колегите + кой е идвал (стар сървър без тях: {} – всички са случайни, но постоянни)
-      this.save.crew = m.crew || {}; this.save.crewSeen = m.crewSeen || {};
-      this.office.setCrew(this.save.crew, this.save.crewSeen);
+      this.save.crew = m.crew || {}; this.save.crewSeen = m.crewSeen || {}; this.save.crewMe = m.crewMe || null;
+      this.office.setCrew(this.save.crew, this.save.crewSeen, this.save.crewMe);
       // моят офис: табелата и картините на стената
       this.save.officeName = m.officeName || ''; this.save.pictures = m.pictures || [];
       this.office.officeName = this.save.officeName;
@@ -130,7 +130,7 @@ export function demoWallet(tokens) {
   const push = (delta, reason, src, by, extra) => tokens.onWallet({
     type: 'wallet', tokens: save.tokens, lifetime: save.lifetimeTokens, delta, reason, src, by,
     owned: save.owned, equipped: save.equipped, achievements: save.achievements, avatar: save.avatar,
-    petNames: save.petNames, starter: save.starter, setup: save.setup, crew: save.crew, crewSeen: save.crewSeen, officeName: save.officeName, pictures: save.pictures,
+    petNames: save.petNames, starter: save.starter, setup: save.setup, crew: save.crew, crewSeen: save.crewSeen, crewMe: save.crewMe, officeName: save.officeName, pictures: save.pictures,
     stats: { tasksDone: save.tasksDone, lifetimeActiveSec: save.lifetimeActiveSec, daysActive: save.daysActive }, ...extra,
   });
   const achievements = () => { for (const a of grantAchievements(save, dayKey())) push(a.reward, 'achievement', null, null, { achievement: a.id }); };

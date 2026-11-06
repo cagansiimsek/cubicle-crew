@@ -117,9 +117,16 @@ export const crewKeyOk = (k) => typeof k === 'string' && /^[pt]:./.test(k) && k.
 export function cleanCrewName(name) {
   return String(name ?? '').replace(/\s+/g, ' ').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, CREW_NAME_MAX);
 }
-/** Промяна на колега: { key, name?, av? } (av: null = пак случаен; reset: true = изцяло по подразбиране). */
+/** Промяна на колега: { key, name?, av? } (av: null = пак случаен; reset: true = изцяло по подразбиране).
+ *  { key: 'p:…', me: true } – на този проект седиш ти (аватарът); { me: null } – пак автоматично (първият дошъл). */
 export function setCrew(save, body = {}) {
   const key = body.key;
+  if ('me' in body) {
+    if (!body.me) { delete save.crewMe; return { ok: true }; }
+    if (!crewKeyOk(key) || !key.startsWith('p:') || key.includes('#')) return { ok: false, error: 'crew' };
+    save.crewMe = key;
+    return { ok: true };
+  }
   if (!crewKeyOk(key)) return { ok: false, error: 'crew' };
   save.crew ||= {};
   if (body.reset) { delete save.crew[key]; return { ok: true }; }

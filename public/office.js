@@ -51,6 +51,7 @@ export class Office {
     this.avatarId = null;            // кой оркестратор го носи: първият дошъл; щом излезе – следващият по ред
     this.crew = {};                  // save.crew: имената и лицата на колегите (раздел „Екип“)
     this.crewSeen = {};              // save.crewSeen: кой е идвал (за имената – да не се повтарят)
+    this.crewMe = null;              // save.crewMe: на кой проект седиш ти (при повече от един проект в офиса)
     this.crewCheck = 0;
     this.joinSeq = 0;
     this.focusId = null;
@@ -162,10 +163,11 @@ export class Office {
   }
 
   /** Екипът (save.crew) се смени: пребоядисва колегите, чийто запис е различен. */
-  setCrew(crew, seen) {
+  setCrew(crew, seen, me) {
     const old = this.crew;
     this.crew = crew || {};
     this.crewSeen = seen || {};
+    if ((me || null) !== this.crewMe) { this.crewMe = me || null; this.syncAvatar(); }
     for (const a of this.actors.values()) {
       if (a.id === this.avatarId || !a.crewKey) continue;
       if (JSON.stringify(old[a.crewKey]?.av) !== JSON.stringify(this.crew[a.crewKey]?.av)) a.setLook(this.lookOf(a));
@@ -212,6 +214,7 @@ export class Office {
       if (crewKey(a.agent) === a.crewBase) continue;
       this.assignCrew(a);
       if (a.id !== this.avatarId) a.setLook(this.lookOf(a));
+      if (!a.agent.subagent) this.syncAvatar(); // проектът се смени – може да е твоят
     }
   }
 
@@ -599,11 +602,22 @@ export class Office {
 
   /** Аватарът на потребителя е само на един оркестратор – първия дошъл, който още е в офиса; другите са случайни. */
   syncAvatar() {
-    if (this.actors.has(this.avatarId)) return;
-    let best = null;
-    for (const a of this.actors.values()) if (!a.agent.subagent && (!best || a.joinSeq < best.joinSeq)) best = a;
-    this.avatarId = best ? best.id : null;
-    if (best) best.setLook(this.lookOf(best));
+    const want = this.avatarFor();
+    if ((want?.id ?? null) === this.avatarId) return;
+    const old = this.actors.get(this.avatarId);
+    this.avatarId = want ? want.id : null;
+    if (old) old.setLook(this.lookOf(old)); // става пак колегата на своя проект
+    if (want) want.setLook(this.lookOf(want));
+  }
+
+  /** Кой носи аватара ти: един проект в офиса -> той (първата му сесия); повече -> избраният в „Екип“/„Аватар“
+   *  (save.crewMe), ако е тук; иначе първият дошъл главен агент. */
+  avatarFor() {
+    const leads = [...this.actors.values()].filter((a) => !a.agent.subagent).sort((p, q) => p.joinSeq - q.joinSeq);
+    if (!leads.length) return null;
+    const projects = new Set(leads.map((a) => a.crewBase || a.id));
+    if (projects.size > 1 && this.crewMe) { const mine = leads.find((a) => a.crewBase === this.crewMe); if (mine) return mine; }
+    return leads[0];
   }
 
   /** Връзка родител -> дете: бюрата са общи, затова детето не се мести (чашата на бюрото сменя цвета сама). */

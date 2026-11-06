@@ -183,6 +183,7 @@ export class Shop {
     const key = [this.tab, JSON.stringify(s.owned), JSON.stringify(s.equipped), JSON.stringify(s.achievements), afford,
       tab.id === 'trophies' ? JSON.stringify(s.stats) + s.lifetime : '', tab.id === 'stats' ? 'stats' : '', JSON.stringify(s.avatar), tab.id === 'weather' ? JSON.stringify(this.weather) : '', JSON.stringify(s.petNames), this.exoSel,
       tab.id === 'decor' ? (s.officeName || '') + JSON.stringify(s.pictures) : '',
+      tab.id === 'crew' || tab.id === 'avatar' ? (s.crewMe || '') + JSON.stringify(s.crewSeen) + this.crewHere().join() : '',
       tab.id === 'crew' ? JSON.stringify(s.crew) + JSON.stringify(s.crewSeen) + this.crewSel + this.crewHere().join() : ''].join('|');
     if (key === this.key) return;
     this.key = key;
@@ -316,6 +317,29 @@ export class Shop {
     const sec = el('section', 'avatar', this.body);
     const opts = this.personEditor(sec, av, 'av');
     el('p', 'hint', opts, T.shop.avatar.hint);
+    // на кой проект седиш ти (последните видени проекти + отворените)
+    const A = T.shop.avatar, me = this.tokens.save.crewMe || null;
+    const projects = this.crewProjects().slice(0, 10);
+    if (me && !projects.includes(me)) projects.unshift(me);
+    const wh = document.createElement('div'); opts.prepend(wh); // най-горе – иначе е под всички дрехи
+    el('h3', null, wh, A.where);
+    const r = el('div', 'sw', wh);
+    const b0 = el('button', me ? '' : 'on', r, A.auto); b0.type = 'button'; b0.dataset.me = '';
+    for (const k of projects) { const b = el('button', k === me ? 'on' : '', r); b.type = 'button'; b.dataset.me = k; b.textContent = this.crewLabel(k); }
+    el('p', 'hint', wh, A.whereHint);
+  }
+
+  /** Проектите (p:…): отворените първо, после по последно идване. */
+  crewProjects() {
+    const s = this.tokens.save, seen = s.crewSeen || {}, here = new Set(this.crewHere());
+    const keys = new Set([...here, ...Object.keys(seen), ...Object.keys(s.crew || {})]);
+    return [...keys].filter((k) => k.startsWith('p:')).sort((p, q) => (here.has(q) - here.has(p)) || ((seen[q]?.at || 0) - (seen[p]?.at || 0)));
+  }
+  /** Етикетът на човека: проектът или типът помощник, както е изписан. */
+  crewLabel(k) {
+    const a = this.tokens.office && [...this.tokens.office.actors.values()].find((x) => x.crewBase === k);
+    if (a) return a.agent.subagent ? a.agent.atype || a.agent.provider || k.slice(2) : a.agent.label;
+    return this.tokens.save.crewSeen?.[k]?.label || k.slice(2);
   }
 
   /** Голям преглед (прав и на дивана) + бутоните за всяка част. attr = data-атрибутът на бутоните ('av' аватар / 'cav' колега). */
@@ -469,10 +493,14 @@ export class Shop {
         const r = await this.tokens.backend.crew?.({ key: k, name: inp.value });
         if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
       };
+      if (k.startsWith('p:')) {
+        const isMe = s.crewMe === k;
+        const mb = el('button', isMe ? 'meon' : '', sec, isMe ? C.notMe : C.me); mb.type = 'button'; mb.dataset.me = isMe ? '' : k;
+        el('p', 'hint', sec).textContent = isMe ? C.meNote : C.avatarNote;
+      }
       const ed = el('div', 'avatar', sec);
       const opts = this.personEditor(ed, av, 'cav');
       if (crew[k]) { const rb = el('button', 'reset', opts, C.reset); rb.type = 'button'; rb.dataset.crewreset = '1'; }
-      if (!k.startsWith('t:')) el('p', 'hint', opts, C.avatarNote);
       return;
     }
     el('p', 'intro', sec).textContent = C.intro;
@@ -486,12 +514,13 @@ export class Shop {
       el('h3', null, sec, title);
       const grid = el('div', 'people', sec);
       for (const k of ks) {
-        const av = avOf(k), a = here.get(k);
+        const mine = s.crewMe === k;
+        const av = mine ? { body: 0, style: 0, top: 0, bottom: 0, ...avatarOf(s) } : avOf(k), a = here.get(k);
         const b = el('button', a ? 'person here' : 'person', grid);
         b.type = 'button'; b.dataset.crewsel = k;
         b.appendChild(this.personCanvas(av, 'stand', 2, a ? STATES[a.vstate]?.color || '#4ac26b' : '#4ac26b'));
         const tx = el('span', 'tx', b);
-        el('b', null, tx).textContent = nameOf(k);
+        el('b', null, tx).textContent = mine ? C.meBadge : nameOf(k);
         el('span', 'dim', tx).textContent = labelOf(k);
         if (a) el('span', 'in', tx).textContent = C.here;
       }
@@ -783,7 +812,8 @@ export class Shop {
     if (b.dataset.go) { this.tab = b.dataset.go; this.key = ''; this.hoverId = null; this.tokens.setPreview(null); this.render(); this.body.scrollTop = 0; return; } // албумът -> разделът
     if (b.dataset.crewsel) { this.crewSel = b.dataset.crewsel; this.key = ''; this.render(); this.body.scrollTop = 0; return; }
     if (b.dataset.crewback) { this.crewSel = null; this.key = ''; this.render(); return; }
-    if (b.dataset.crewreset) r = await be.crew?.({ key: this.crewSel, reset: true });
+    if (b.dataset.me !== undefined) r = await be.crew?.(b.dataset.me ? { key: b.dataset.me, me: true } : { me: null });
+    else if (b.dataset.crewreset) r = await be.crew?.({ key: this.crewSel, reset: true });
     else if (b.dataset.cav) { if (!b.classList.contains('on') && be.crew) r = await be.crew({ key: this.crewSel, av: JSON.parse(b.dataset.cav) }); }
     else if (b.dataset.av) { if (!b.classList.contains('on') && be.avatar) r = await be.avatar(JSON.parse(b.dataset.av)); }
     else if (b.dataset.buy) r = await be.buy(b.dataset.buy, b.dataset.slot || null);
