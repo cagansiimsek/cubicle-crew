@@ -280,6 +280,7 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.21.1': [['Точките не застъпват имена', 'Свитата до цветна точка табелка вече не ляга върху името на друг агент – ако няма място и за точката, се скрива (посочи агента и се вижда).']],
       '2.21.0': [
         ['Имената не се трупат', 'Когато много агенти са близо един до друг, етикетите им се разминават: по-маловажният слиза ред по-долу или остава само цветната точка (посочи я и името се вижда). Балонче, което закрива по-важно, се скрива. Червеното „Чака теб“ винаги остава отгоре.'],
         ['„Чака теб“ казва защо и откога', 'Вместо името на инструмента пише „Има въпрос към теб“ или „Планът е готов – одобряваш ли?“, а след първата минута – и колко време чака: „Чака теб! · 3 мин“.'],
@@ -626,6 +627,7 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.21.1': [['Dots stay off names', 'A label shrunk to its colour dot no longer lands on another agent\'s name – if there is no room even for the dot, it hides (point at the agent to see it).']],
       '2.21.0': [
         ['Names don\'t pile up', 'When many agents are close together, their labels make room: the less important one moves a row down or shrinks to its colour dot (point at it to see the name). A bubble that covers a more important one hides. The red "Needs you" always stays on top.'],
         ['"Needs you" says why and for how long', 'Instead of the tool name it says "Has a question for you" or "Plan ready – approve?", and after the first minute how long it has been waiting: "Needs you! · 3 min".'],
