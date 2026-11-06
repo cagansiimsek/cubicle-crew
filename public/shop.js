@@ -1,15 +1,61 @@
 // Магазин: DOM панел (острия текст, кирилица) с раздели; посочен предмет се вижда веднага в офиса (преглед),
 // покупките минават през сървъра (или демо портфейла) – правилата са в catalog.js.
-import { T, itemName, LANG, PARAMS, petName, petTitle } from './config.js';
+import { T, itemName, LANG, PARAMS, petName, petTitle, STATES } from './config.js';
 import { prefs } from './prefs.js';
 import { wxFrom } from './weather.js';
-import { ITEMS, ITEM, TABS, SLOTS, GROUP_SLOTS, ACHIEVEMENTS, owns, avatarOf, unlocked, resolveDecor, PET_SLOTS, petCount, MAX_PETS, PET_NAME_MAX, inSeason } from './catalog.js';
-import { CharacterSprites, avatarLook, AVATAR_TOPS, AVATAR_BOTTOMS, DRESS_TOPS } from './sprites.js';
-import { SKINS, HAIRS } from './palette.js';
-import { thumb } from './environment.js';
+import { ITEMS, ITEM, TABS, SLOTS, GROUP_SLOTS, ACHIEVEMENTS, owns, avatarOf, unlocked, resolveDecor, PET_SLOTS, petCount, MAX_PETS, PET_NAME_MAX, inSeason, PIC_W, PIC_H, PIC_SLOTS, OFFICE_NAME_MAX } from './catalog.js';
+import { CharacterSprites, avatarLook, randomAv, canShort, AVATAR_TOPS, AVATAR_BOTTOMS, DRESS_TOPS, DESK_ITEMS } from './sprites.js';
+import { SKINS, HAIRS, PANTS, SKIRTS, SHOES, IRIS, ACCENTS } from './palette.js';
+import { thumb, drawDeskItem, drawPicture } from './environment.js';
 import { Cat, Dog, Critter } from './characters.js';
 import { coinUrl } from './tokens.js';
 import { makeCanvas, fmtUsd } from './util.js';
+
+/** Снимка -> пикселна картина PIC_W x PIC_H с до 12 цвята (k-means), изцяло в браузъра. */
+async function pixelize(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  try { img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
+  const W = PIC_W, H = PIC_H, ar = W / H;
+  let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0;
+  if (!sw || !sh) throw new Error('empty');
+  if (sw / sh > ar) { const w = sh * ar; sx = (sw - w) / 2; sw = w; } else { const h = sw / ar; sy = (sh - h) / 4; sh = h; } // по-скоро горната част (лица)
+  // смаляване на стъпки – по-чисто от един голям скок
+  let c = makeCanvas(W * 8, H * 8), g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high'; g.drawImage(img, sx, sy, sw, sh, 0, 0, W * 8, H * 8);
+  for (const k of [4, 2, 1]) {
+    const d = makeCanvas(W * k, H * k), dg = d.getContext('2d');
+    dg.imageSmoothingQuality = 'high'; dg.drawImage(c, 0, 0, W * k, H * k); c = d;
+  }
+  const data = c.getContext('2d').getImageData(0, 0, W, H).data;
+  const pts = [];
+  for (let i = 0; i < W * H; i++) {
+    const a = data[i * 4 + 3] / 255; // прозрачното – върху тъмна стена
+    pts.push([data[i * 4] * a + 42 * (1 - a), data[i * 4 + 1] * a + 32 * (1 - a), data[i * 4 + 2] * a + 48 * (1 - a)]);
+  }
+  // k-means: начални центрове по яркост (равномерно), 12 итерации
+  const K = 12, lum = (p) => p[0] * 0.3 + p[1] * 0.59 + p[2] * 0.11;
+  const sorted = [...pts].sort((p, q) => lum(p) - lum(q));
+  let cent = Array.from({ length: K }, (_, k) => [...sorted[Math.floor(((k + 0.5) / K) * sorted.length)]]);
+  const lab = new Array(pts.length).fill(0);
+  for (let it = 0; it < 12; it++) {
+    pts.forEach((p, i) => {
+      let best = 0, bd = Infinity;
+      cent.forEach((q, k) => { const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2; if (d < bd) { bd = d; best = k; } });
+      lab[i] = best;
+    });
+    const sum = cent.map(() => [0, 0, 0, 0]);
+    pts.forEach((p, i) => { const t = sum[lab[i]]; t[0] += p[0]; t[1] += p[1]; t[2] += p[2]; t[3]++; });
+    cent = cent.map((q, k) => (sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : q));
+  }
+  // само използваните цветове, леко по-наситени (пикселното изкуство не обича кал)
+  const used = [...new Set(lab)];
+  const hex = (q) => {
+    const m = (q[0] + q[1] + q[2]) / 3;
+    return '#' + q.map((v) => Math.max(0, Math.min(255, Math.round(m + (v - m) * 1.15))).toString(16).padStart(2, '0')).join('');
+  };
+  return { pal: used.map((k) => hex(cent[k])), px: lab.map((k) => used.indexOf(k).toString(16)).join('') };
+}
 
 // малък прозорец (същото като в index.html): по-дребни миниатюри, за да се побират повече
 const SMALL = matchMedia('(max-width: 899px), (max-height: 539px)');
@@ -135,7 +181,9 @@ export class Shop {
     // пълно прерисуване само ако нещо видимо се е променило (иначе посочването "мига")
     const afford = ITEMS.filter((it) => tab.groups.includes(it.group) && !owns(s, it.id) && it.price <= t.tokens).map((it) => it.id).join();
     const key = [this.tab, JSON.stringify(s.owned), JSON.stringify(s.equipped), JSON.stringify(s.achievements), afford,
-      tab.id === 'trophies' ? JSON.stringify(s.stats) + s.lifetime : '', tab.id === 'stats' ? 'stats' : '', JSON.stringify(s.avatar), tab.id === 'weather' ? JSON.stringify(this.weather) : '', JSON.stringify(s.petNames), this.exoSel].join('|');
+      tab.id === 'trophies' ? JSON.stringify(s.stats) + s.lifetime : '', tab.id === 'stats' ? 'stats' : '', JSON.stringify(s.avatar), tab.id === 'weather' ? JSON.stringify(this.weather) : '', JSON.stringify(s.petNames), this.exoSel,
+      tab.id === 'decor' ? (s.officeName || '') + JSON.stringify(s.pictures) : '',
+      tab.id === 'crew' ? JSON.stringify(s.crew) + JSON.stringify(s.crewSeen) + this.crewSel + this.crewHere().join() : ''].join('|');
     if (key === this.key) return;
     this.key = key;
     const scroll = this.body.scrollTop;
@@ -145,12 +193,16 @@ export class Shop {
     this.body.innerHTML = '';
     if (tab.id === 'trophies') this.renderTrophies();
     else if (tab.id === 'avatar') this.renderAvatar();
+    else if (tab.id === 'crew') this.renderCrew();
     else if (tab.id === 'weather') this.renderWeather();
     else if (tab.id === 'stats') this.renderStats();
     else if (tab.id === 'pets') this.renderPets();
     else if (tab.id === 'album') this.renderAlbum();
     else if (tab.merge) this.renderGroup(tab.groups, T.shop.tabs[tab.id]); // по един предмет на група – обща решетка
-    else for (const g of tab.groups) this.renderGroup([g], T.shop.groups[g]);
+    else {
+      if (tab.id === 'decor') this.renderMine(); // табелата и твоите картини
+      for (const g of tab.groups) this.renderGroup([g], T.shop.groups[g]);
+    }
     this.body.scrollTop = scroll;
     if (typing) {
       const inp = this.body.querySelector(`input[name="${typing.name}"]`);
@@ -258,45 +310,193 @@ export class Shop {
     }
   }
 
-  /** Аватарът: голям преглед + тяло, прическа, кожа, коса, очила. Всеки избор се записва веднага (безплатно). */
+  /** Аватарът: голям преглед + всички части. Всеки избор се записва веднага (безплатно). */
   renderAvatar() {
-    const av = { body: 0, style: 0, top: 0, bottom: 0, ...avatarOf(this.tokens.save) }, A = T.shop.avatar;
-    const gk = av.body === 1 ? 'f' : 'm', dress = AVATAR_BOTTOMS[gk][av.bottom] === 'dress';
+    const av = { body: 0, style: 0, top: 0, bottom: 0, ...avatarOf(this.tokens.save) };
     const sec = el('section', 'avatar', this.body);
+    const opts = this.personEditor(sec, av, 'av');
+    el('p', 'hint', opts, T.shop.avatar.hint);
+  }
+
+  /** Голям преглед (прав и на дивана) + бутоните за всяка част. attr = data-атрибутът на бутоните ('av' аватар / 'cav' колега). */
+  personEditor(sec, av, attr) {
+    const A = T.shop.avatar, gk = av.body === 1 ? 'f' : 'm', dress = AVATAR_BOTTOMS[gk][av.bottom] === 'dress';
     const pv = el('div', 'pv', sec);
-    for (const pose of ['stand', 'couchSit']) {
-      const f = new CharacterSprites(avatarLook(av, 'avatar')).frame(pose, null, '#4ac26b');
-      const c = makeCanvas(24, 34), g = c.getContext('2d');
-      g.fillStyle = '#7e5538'; g.fillRect(0, 0, 24, 34);
-      g.fillStyle = '#6f4a30'; for (const y of [10, 21, 32]) g.fillRect(0, y, 24, 1);
-      g.drawImage(f.body, 0, 1); g.drawImage(f.front, 0, 1);
-      c.className = 'th'; c.style.width = '96px'; c.style.height = '136px';
-      pv.appendChild(c);
-    }
+    for (const pose of ['stand', 'couchSit']) pv.appendChild(this.personCanvas(av, pose, 4));
     const opts = el('div', 'opts', sec);
     const row = (title, items) => {
       el('h3', null, opts, title);
       const r = el('div', 'sw', opts);
       for (const [label, patch, color, on] of items) {
         const b = el('button', on ? 'on' : '', r, color ? '' : label);
-        b.title = label; b.dataset.av = JSON.stringify({ ...av, ...patch });
+        b.title = label; b.dataset[attr] = JSON.stringify({ ...av, ...patch });
         if (color) { b.classList.add('dot'); b.style.background = color; }
       }
     };
-    row(A.body, [[A.male, { body: 0 }, null, av.body !== 1], [A.female, { body: 1 }, null, av.body === 1]]);
-    row(A.style, A.styles[gk].map((s, i) => [s, { style: i }, null, av.style === i]));
-    // горнище; с рокля се показват само съвместимите (avatarLook пак пази)
-    const tops = A.tops[gk].map((s, i) => [s, { top: i }, null, av.top === i]).filter((_, i) => !dress || DRESS_TOPS.has(AVATAR_TOPS[gk][i]));
-    row(A.top, tops);
-    if (gk === 'f') row(A.bottom, A.bottoms.map((s, i) => {
-      // към рокля с несъвместимо горнище -> блуза
-      const patch = AVATAR_BOTTOMS.f[i] === 'dress' && !DRESS_TOPS.has(AVATAR_TOPS.f[av.top] || 'blouse') ? { bottom: i, top: 0 } : { bottom: i };
-      return [s, patch, null, av.bottom === i];
-    }));
-    row(A.skin, SKINS.map((s, i) => [A.skins[i] || '', { skin: i }, s[1], av.skin === i]));
+    row(A.body, [[A.male, { body: 0, style: 0 }, null, av.body !== 1], [A.female, { body: 1, style: 0 }, null, av.body === 1]]);
+    row(A.style, A.styles[gk].map((x, i) => [x, { style: i }, null, av.style === i]));
     row(A.hair, HAIRS.map((h, i) => [A.hairs[i] || '', { hair: i }, h[1], av.hair === i]));
+    row(A.skin, SKINS.map((x, i) => [A.skins[i] || '', { skin: i }, x[1], av.skin === i]));
+    row(A.iris, IRIS.map((c, i) => ['', { iris: i }, c, (av.iris ?? 0) === i]));
+    if (gk === 'm') row(A.beard, A.beards.map((x, i) => [x, { beard: i }, null, (av.beard || 0) === i]));
+    else row(A.earrings, [[A.without, { earrings: false }, null, av.earrings === false], [A.earrings, { earrings: true }, null, av.earrings !== false]]);
     row(A.glasses, [[A.without, { glasses: false }, null, !av.glasses], [A.with, { glasses: true }, null, !!av.glasses]]);
-    el('p', 'hint', opts, A.hint);
+    row(A.head, A.heads.map((x, i) => [x, { head: i }, null, (av.head || 0) === i]));
+    // горнище; с рокля се показват само съвместимите (avatarLook пак пази)
+    const tops = A.tops[gk].map((x, i) => [x, { top: i }, null, av.top === i]).filter((_, i) => !dress || DRESS_TOPS.has(AVATAR_TOPS[gk][i]));
+    row(A.top, tops);
+    if (canShort(av)) row(A.sleeves, A.sleeve.map((x, i) => [x, { short: i === 1 }, null, !!av.short === (i === 1)]));
+    if (gk === 'f') row(A.bottom, A.bottoms.map((x, i) => {
+      // към рокля с несъвместимо горнище -> блуза; цветът на панталона/полата – наново
+      const patch = AVATAR_BOTTOMS.f[i] === 'dress' && !DRESS_TOPS.has(AVATAR_TOPS.f[av.top] || 'blouse') ? { bottom: i, top: 0 } : { bottom: i };
+      return [x, { ...patch, legs: undefined }, null, av.bottom === i];
+    }));
+    const bottom = AVATAR_BOTTOMS[gk][av.bottom] || 'pants';
+    if (bottom !== 'dress') {
+      const list = bottom === 'skirt' ? SKIRTS : PANTS;
+      const cur = av.legs ?? (bottom === 'skirt' ? 0 : gk === 'f' ? 3 : 0);
+      row(bottom === 'skirt' ? A.skirt : A.legs, list.map((c, i) => ['', { legs: i }, c[1], cur === i]));
+    }
+    row(A.shoes, SHOES.map((c, i) => ['', { shoes: i }, c[0], (av.shoes ?? (gk === 'f' ? 3 : 0)) === i]));
+    row(A.accent, ACCENTS.map((c, i) => ['', { accent: i }, c, (av.accent ?? 1) === i]));
+    // личната вещ на бюрото: малки картинки
+    el('h3', null, opts, A.desk);
+    const dr = el('div', 'sw desk', opts);
+    DESK_ITEMS.forEach((name, i) => {
+      const b = el('button', (av.desk || 0) === i ? 'on' : '', dr);
+      b.title = A.desks[i] || name || ''; b.dataset[attr] = JSON.stringify({ ...av, desk: i });
+      if (!name) { b.textContent = A.desks[0]; return; }
+      const c = makeCanvas(12, 16), g = c.getContext('2d');
+      drawDeskItem(g, name, -55, -21);
+      c.style.width = '24px'; c.style.height = '32px'; b.appendChild(c);
+    });
+    return opts;
+  }
+
+  /** Канвас с човек (поза, мащаб k) на дървен под. */
+  personCanvas(av, pose, k, shirt = '#4ac26b') {
+    const f = new CharacterSprites(avatarLook(av, 'avatar')).frame(pose, null, shirt);
+    const c = makeCanvas(24, 34), g = c.getContext('2d');
+    g.fillStyle = '#7e5538'; g.fillRect(0, 0, 24, 34);
+    g.fillStyle = '#6f4a30'; for (const y of [10, 21, 32]) g.fillRect(0, y, 24, 1);
+    g.drawImage(f.body, 0, 1); g.drawImage(f.front, 0, 1);
+    c.className = 'th'; c.style.width = 24 * k + 'px'; c.style.height = 34 * k + 'px';
+    return c;
+  }
+
+  /** „Моят офис“: името на табелата + до 3 твои картини на мястото на постерите. */
+  renderMine() {
+    const s = this.tokens.save, M = T.shop.mine, be = this.tokens.backend;
+    const sec = el('section', 'mine', this.body);
+    el('h3', null, sec, M.name);
+    const form = el('form', 'pname', sec);
+    const inp = el('input', null, form);
+    inp.name = 'office-name'; inp.maxLength = OFFICE_NAME_MAX; inp.placeholder = M.namePh; inp.value = s.officeName || '';
+    inp.setAttribute('aria-label', M.name);
+    el('button', null, form, M.save).type = 'submit';
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const r = await be.office?.({ name: inp.value });
+      if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
+    };
+    el('p', 'hint', sec).textContent = M.nameHint;
+    el('h3', null, sec, M.pics);
+    const row = el('div', 'pics', sec);
+    for (let i = 0; i < PIC_SLOTS; i++) {
+      const pic = s.pictures?.[i] || null;
+      const tile = el('div', 'pic', row);
+      const c = makeCanvas(16, 20), g = c.getContext('2d');
+      if (pic) drawPicture(g, 0, 0, pic);
+      else { g.fillStyle = '#2a2030'; g.fillRect(0, 0, 16, 20); g.fillStyle = '#3a3452'; g.fillRect(1, 1, 14, 18); g.fillStyle = '#5a5272'; g.fillRect(7, 6, 2, 8); g.fillRect(4, 9, 8, 2); }
+      tile.appendChild(c);
+      el('div', 'nm', tile).textContent = M.where[i];
+      const act = el('div', 'act', tile);
+      const file = el('input', null, tile);
+      file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
+      const choose = el('button', null, act, M.choose); choose.type = 'button';
+      choose.onclick = () => file.click();
+      file.onchange = async () => {
+        const f = file.files?.[0];
+        if (!f) return;
+        choose.disabled = true; choose.textContent = M.busy;
+        let r = null;
+        try { r = await be.office?.({ picture: i, pic: await pixelize(f) }); } catch { r = { ok: false, error: 'picture' }; }
+        choose.disabled = false; choose.textContent = M.choose;
+        if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
+      };
+      if (pic) {
+        const rm = el('button', null, act, M.remove); rm.type = 'button';
+        rm.onclick = async () => { const r = await be.office?.({ picture: i, pic: null }); if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error); };
+      }
+    }
+    el('p', 'hint', sec).textContent = M.picHint;
+  }
+
+  /** Ключовете на колегите, които са в офиса в момента. */
+  crewHere() {
+    const o = this.tokens.office;
+    return o ? [...o.actors.values()].filter((a) => a.crewBase).map((a) => a.crewBase) : [];
+  }
+
+  /** Раздел „Екип“: всички колеги (проекти и видове помощници) или редакторът на един. */
+  renderCrew() {
+    const s = this.tokens.save, C = T.shop.crew, crew = s.crew || {}, seen = s.crewSeen || {};
+    const o = this.tokens.office, actors = o ? [...o.actors.values()] : [];
+    const here = new Map();
+    for (const a of actors) if (a.crewBase && !here.has(a.crewBase)) here.set(a.crewBase, a);
+    const labelOf = (k) => {
+      const a = here.get(k);
+      if (a) return a.agent.subagent ? a.agent.atype || a.agent.provider || k.slice(2) : a.agent.label;
+      return seen[k]?.label || k.slice(2);
+    };
+    const avOf = (k) => crew[k]?.av || randomAv(k);
+    const nameOf = (k) => o?.nameOf(k) || k.slice(2);
+    const sec = el('section', 'crew', this.body);
+    if (this.crewSel) {
+      const k = this.crewSel, av = avOf(k);
+      const top = el('div', 'crewtop', sec);
+      const back = el('button', 'back', top, C.back); back.type = 'button'; back.dataset.crewback = '1';
+      const tx = el('div', 'tx', top);
+      el('b', null, tx).textContent = nameOf(k);
+      el('span', 'dim', tx).textContent = k.startsWith('t:') ? C.sub(labelOf(k)) : C.lead(labelOf(k));
+      const form = el('form', 'pname', sec);
+      const inp = el('input', null, form);
+      inp.name = 'crew-name'; inp.maxLength = 20; inp.placeholder = C.namePh(crew[k]?.name ? '' : nameOf(k)).replace(/s+$/, ''); inp.value = crew[k]?.name || '';
+      inp.setAttribute('aria-label', C.name);
+      el('button', null, form, T.shop.pets.rename).type = 'submit';
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const r = await this.tokens.backend.crew?.({ key: k, name: inp.value });
+        if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
+      };
+      const ed = el('div', 'avatar', sec);
+      const opts = this.personEditor(ed, av, 'cav');
+      if (crew[k]) { const rb = el('button', 'reset', opts, C.reset); rb.type = 'button'; rb.dataset.crewreset = '1'; }
+      if (!k.startsWith('t:')) el('p', 'hint', opts, C.avatarNote);
+      return;
+    }
+    el('p', 'intro', sec).textContent = C.intro;
+    const keys = new Set([...Object.keys(seen), ...Object.keys(crew), ...here.keys()]);
+    const list = [...keys].filter((k) => /^[pt]:/.test(k))
+      .sort((p, q) => (here.has(q) - here.has(p)) || ((seen[q]?.at || 0) - (seen[p]?.at || 0)) || p.localeCompare(q));
+    if (!list.length) { el('p', 'hint', sec).textContent = C.empty; return; }
+    for (const [title, kind] of [[C.leads, 'p:'], [C.subs, 't:']]) {
+      const ks = list.filter((k) => k.startsWith(kind));
+      if (!ks.length) continue;
+      el('h3', null, sec, title);
+      const grid = el('div', 'people', sec);
+      for (const k of ks) {
+        const av = avOf(k), a = here.get(k);
+        const b = el('button', a ? 'person here' : 'person', grid);
+        b.type = 'button'; b.dataset.crewsel = k;
+        b.appendChild(this.personCanvas(av, 'stand', 2, a ? STATES[a.vstate]?.color || '#4ac26b' : '#4ac26b'));
+        const tx = el('span', 'tx', b);
+        el('b', null, tx).textContent = nameOf(k);
+        el('span', 'dim', tx).textContent = labelOf(k);
+        if (a) el('span', 'in', tx).textContent = C.here;
+      }
+    }
+    el('p', 'hint', sec).textContent = C.twin;
   }
 
   /** Любимци по видове (котки, куче, екзотични): горе обобщение (колко са в офиса), после за всеки вид:
@@ -581,7 +781,11 @@ export class Shop {
       return;
     }
     if (b.dataset.go) { this.tab = b.dataset.go; this.key = ''; this.hoverId = null; this.tokens.setPreview(null); this.render(); this.body.scrollTop = 0; return; } // албумът -> разделът
-    if (b.dataset.av) { if (!b.classList.contains('on') && be.avatar) r = await be.avatar(JSON.parse(b.dataset.av)); }
+    if (b.dataset.crewsel) { this.crewSel = b.dataset.crewsel; this.key = ''; this.render(); this.body.scrollTop = 0; return; }
+    if (b.dataset.crewback) { this.crewSel = null; this.key = ''; this.render(); return; }
+    if (b.dataset.crewreset) r = await be.crew?.({ key: this.crewSel, reset: true });
+    else if (b.dataset.cav) { if (!b.classList.contains('on') && be.crew) r = await be.crew({ key: this.crewSel, av: JSON.parse(b.dataset.cav) }); }
+    else if (b.dataset.av) { if (!b.classList.contains('on') && be.avatar) r = await be.avatar(JSON.parse(b.dataset.av)); }
     else if (b.dataset.buy) r = await be.buy(b.dataset.buy, b.dataset.slot || null);
     else if (b.dataset.remove) r = await be.equip(b.dataset.slot, null);
     else if (b.dataset.equip && !b.classList.contains('on')) r = await be.equip(b.dataset.slot, b.dataset.equip);

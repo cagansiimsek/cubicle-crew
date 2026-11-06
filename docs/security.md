@@ -40,7 +40,7 @@ The text of your prompts, Claude's answers, thinking, file contents and tool out
 
 All in `~/.pixel-office/` (or `PIXEL_OFFICE_HOME`):
 
-- `save.json` (+ `.bak`) – coins, bought decor, achievements, avatar, pet names, how many pet treats you gave (a treat = clicking the bowl, a fixed 5 coins via `POST /api/treat`, same local-only guard as the shop). No session content.
+- `save.json` (+ `.bak`) – coins, bought decor, achievements, avatar, pet names, how many pet treats you gave (a treat = clicking the bowl, a fixed 5 coins via `POST /api/treat`, same local-only guard as the shop). Your crew (`POST /api/crew`, same guard): the names and looks you gave colleagues, plus a list of who has been in the office – keyed by project folder name (`p:<name>`) or helper type (`t:explore`, from `agentType` in Claude Code's `subagents/*.meta.json` or the Task call's `subagent_type`), at most 60, with the time last seen. My office (`POST /api/office`, same guard): the office name and up to three 14×18 pictures stored as a palette + pixel indices; the photo itself is read and shrunk in the page (`URL.createObjectURL`, never sent anywhere), only those numbers reach the server. No session content.
 - `save.lock` – which running copy counts coins (pid + port).
 - `stats.json` – your stats for the last 60 days: per day and session the project folder name, time in each state, number of tool calls, token counts and the API cost estimate. Numbers only, no commands or text.
 - `weather.json` – the city you picked and the last forecast.

@@ -247,6 +247,26 @@ const DESK_ITEMS = {
   },
 };
 export const DESK_ITEM_NAMES = Object.keys(DESK_ITEMS);
+// личните вещи, които човек може да си избере (sprites.js DESK_ITEMS) – освен тези отгоре
+const KEEPSAKES = {
+  globe(ctx) {
+    R(ctx, '#3a2a20', 57, 34, 7, 2); R(ctx, '#6a4a30', 60, 32, 1, 2);
+    R(ctx, '#2a5aa0', 57, 24, 7, 8); R(ctx, '#2a5aa0', 58, 23, 5, 10); R(ctx, '#4a8ae0', 58, 24, 3, 2);
+    R(ctx, '#5ab05a', 58, 26, 3, 3); R(ctx, '#5ab05a', 61, 29, 2, 2); R(ctx, '#3e8a46', 60, 31, 2, 1);
+    R(ctx, '#c8a050', 64, 25, 1, 7);
+  },
+  trophy(ctx) {
+    R(ctx, '#4a3a2a', 57, 34, 7, 2); R(ctx, '#a07820', 59, 31, 3, 3); R(ctx, '#c8a030', 60, 30, 1, 1);
+    R(ctx, '#a07820', 57, 23, 7, 6); R(ctx, '#f0c840', 58, 23, 5, 5); R(ctx, '#fff0a0', 58, 23, 2, 2);
+    R(ctx, '#c8a030', 56, 24, 1, 3); R(ctx, '#c8a030', 64, 24, 1, 3); R(ctx, '#a07820', 59, 28, 3, 2);
+  },
+};
+/** Вещта на бюрото (рисува се всеки кадър: личната вещ на седящия или случайната на бюрото). */
+export function drawDeskItem(ctx, name, x, y) {
+  const fn = DESK_ITEMS[name] || KEEPSAKES[name];
+  if (!fn) return;
+  ctx.save(); ctx.translate(x, y); fn(ctx); ctx.restore();
+}
 
 /** Изображенията на едно работно място: back (стол) и front (бюро, монитор, лампа, вещи). */
 export function buildPod(variantSeed, lead = false, decor = DEFAULT_DECOR, team = 0) {
@@ -265,7 +285,7 @@ export function buildPod(variantSeed, lead = false, decor = DEFAULT_DECOR, team 
   fx.drawImage(prop('monitor', W, H, (c) => drawMonitor(c, sticky)), 0, 0);
   drawKeyboard(fx);
   drawLamp(fx, lampColor);
-  DESK_ITEMS[item](fx);
+  // вещта (item) не е в картинката – office.drawPodFront я рисува: личната на седящия, иначе тази
   // до бюрото на пода: кошче вдясно (понякога със смачкана хартия) и/или раница вляво – да изглежда обитавано
   // (отделни r за да не мести останалите случайни избори)
   const rr = rng(variantSeed * 7 + 3);
@@ -667,6 +687,12 @@ const POSTERS = {
   },
 };
 
+/** Твоя картина в рамката на постер (16x20; картината е 14x18 – catalog.js PIC_W/PIC_H). */
+export function drawPicture(ctx, x, y, pic) {
+  R(ctx, '#2a2030', x, y, 16, 20);
+  for (let j = 0; j < 18; j++) for (let i = 0; i < 14; i++) R(ctx, pic.pal[parseInt(pic.px[j * 14 + i], 16)] || '#000000', x + 1 + i, y + 1 + j, 1, 1);
+  R(ctx, 'rgba(255,255,255,0.10)', x + 1, y + 1, 14, 1); // лек отблясък на стъклото
+}
 function drawPoster(ctx, x, y, kind) {
   R(ctx, '#2a2030', x, y, 16, 20); R(ctx, '#e8e4dc', x + 1, y + 1, 14, 18);
   const ix = x + 2, iy = y + 2;
@@ -1128,7 +1154,8 @@ export function buildRoom(L, seed = 1, decor = DEFAULT_DECOR) {
     if (i < nWin - 1 && gap >= 22 && i % 2 === 0) posters.push({ x: Math.round(x + WW + gap / 2 - 8), y: 12, kind: decor.posters.kinds[posters.length % 3] });
   }
   for (const w of windows) drawWindowFrame(g, w.x, w.y, w.w, w.h);
-  for (const p of posters) drawPoster(g, p.x, p.y, p.kind);
+  // твоите картини (save.pictures): 0 = над диспенсъра, 1.. = постерите между прозорците
+  posters.forEach((p, i) => { const pic = decor.pictures?.[i + 1]; if (pic) drawPicture(g, p.x, p.y, pic); else drawPoster(g, p.x, p.y, p.kind); });
   if (board) drawWhiteboardFrame(g, board);
   const dt = lo.darts;
   const dartImg = prop('dartboard', dt.w, dt.h, (c) => drawDartboard(c, dt.w, dt.h));
@@ -1140,7 +1167,8 @@ export function buildRoom(L, seed = 1, decor = DEFAULT_DECOR) {
   const digital = { x: clock.x - 10, y: clock.y + 9, w: 21, h: 7 };
   R(g, '#1a1420', digital.x, digital.y, digital.w, digital.h); R(g, '#0e1a16', digital.x + 1, digital.y + 1, digital.w - 2, digital.h - 2);
   R(g, '#3a3248', digital.x, digital.y + digital.h, digital.w, 1);
-  drawPoster(g, lo.cooler.x - 1, 10, decor.posters.kinds[1 + (posters.length % 2)]);
+  if (decor.pictures?.[0]) drawPicture(g, lo.cooler.x - 1, 10, decor.pictures[0]);
+  else drawPoster(g, lo.cooler.x - 1, 10, decor.posters.kinds[1 + (posters.length % 2)]);
   if (decor.neon) drawNeon(g, lo.x + lo.w - 26, 12, decor.neon.c, decor.neon.style);
 
   // прозрачен фон: стената я няма – часовникът виси във въздуха вляво от дартса, времето навън стои върху

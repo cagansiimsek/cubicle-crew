@@ -74,7 +74,7 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify(wallet.publicSave()));
     return;
   }
-  if (urlPath === '/api/buy' || urlPath === '/api/equip' || urlPath === '/api/avatar' || urlPath === '/api/setup' || urlPath === '/api/pet' || urlPath === '/api/treat') {
+  if (urlPath === '/api/buy' || urlPath === '/api/equip' || urlPath === '/api/avatar' || urlPath === '/api/setup' || urlPath === '/api/pet' || urlPath === '/api/treat' || urlPath === '/api/crew' || urlPath === '/api/office') {
     // само POST с JSON от localhost: чужда страница не може да харчи токените (JSON от друг произход изисква preflight, който не позволяваме)
     const origin = req.headers.origin;
     if (req.method !== 'POST' || !/^application\/json/.test(req.headers['content-type'] || '') || (origin && !LOCAL_ORIGIN.test(origin))) { res.writeHead(403).end(); return; }
@@ -415,8 +415,8 @@ const brief = (input = {}) => {
 //  1. <agent>.meta.json до файла на под-агента: { toolUseId, requestShape, description } – точен tool_use id
 //  2. sessionId в редовете на под-агента / името на папката <sessionId>/subagents/ – кой е родителят
 //  3. евристика: последният Task/Agent tool_start в същия проект до LINK_WINDOW_MS преди появата
-const links = new Map();        // file -> { parent, parent_tool_use_id, background, desc, source, metaTried }
-const delegations = [];         // { parent, projectDir, tool_use_id, ts, claimed }
+const links = new Map();        // file -> { parent, parent_tool_use_id, background, desc, atype, source, metaTried }
+const delegations = [];         // { parent, projectDir, tool_use_id, ts, claimed, atype }
 const DELEGATE = new Set(['Task', 'Agent']);
 
 const isSubFile = (file) => file.includes(`${path.sep}subagents${path.sep}`);
@@ -428,14 +428,16 @@ function projectDirOf(file) {
 
 function linkFor(file, obj, agent) {
   let L = links.get(file);
-  if (!L) { L = { parent: null, parent_tool_use_id: null, background: false, desc: null, source: null, metaTried: 0 }; links.set(file, L); }
+  if (!L) { L = { parent: null, parent_tool_use_id: null, background: false, desc: null, atype: null, source: null, metaTried: 0, metaTries: 0 }; links.set(file, L); }
   const now = Date.now();
   // 1) meta.json (може да се появи малко след jsonl файла – пробваме пак до 1 път в секунда)
-  if (!L.parent_tool_use_id && now - L.metaTried > 1000) {
-    L.metaTried = now;
+  // типът (agentType) също е там – търсим го още няколко пъти, дори ако родителят е намерен по евристиката
+  if ((!L.parent_tool_use_id || (!L.atype && L.metaTries < 10)) && now - L.metaTried > 1000) {
+    L.metaTried = now; L.metaTries++;
     try {
       const meta = JSON.parse(fs.readFileSync(file.replace(/\.jsonl$/, '.meta.json'), 'utf8'));
-      if (meta.toolUseId) { L.parent_tool_use_id = meta.toolUseId; L.source = 'meta'; }
+      if (meta.toolUseId && !L.parent_tool_use_id) { L.parent_tool_use_id = meta.toolUseId; L.source = 'meta'; }
+      if (meta.agentType) L.atype = String(meta.agentType).slice(0, 60);
       if (meta.requestShape === 'background') L.background = true;
       if (meta.description) L.desc = String(meta.description).slice(0, 80);
     } catch { /* няма meta */ }
@@ -462,7 +464,7 @@ function linkFor(file, obj, agent) {
     }
   }
   // tool_use, който meta.json вече е посочил – да не го "вземе" друг под-агент
-  if (L.parent_tool_use_id) for (const d of delegations) if (d.tool_use_id === L.parent_tool_use_id) d.claimed = true;
+  if (L.parent_tool_use_id) for (const d of delegations) if (d.tool_use_id === L.parent_tool_use_id) { d.claimed = true; if (!L.atype && d.atype) L.atype = d.atype; }
   return L;
 }
 
@@ -515,6 +517,7 @@ function handleLine(file, line) {
     if (L.parent_tool_use_id) base.parent_tool_use_id = L.parent_tool_use_id;
     if (L.background) base.background = true;
     if (L.desc) base.desc = L.desc;
+    if (L.atype) base.atype = L.atype; // типът под-агент (Explore, Plan, твой агент…) – за постоянния колега
     if (DEBUG && L.source) base.link = L.source;
   }
   // истинските токени (за личната статистика) – само числата от usage, нищо от текста
@@ -530,16 +533,17 @@ function handleLine(file, line) {
     out.push({ type: obj.type === 'user' ? 'user_prompt' : 'say' });
   } else if (Array.isArray(content)) {
     for (const b of content) {
-      if (b.type === 'tool_use') out.push({ type: 'tool_start', id: b.id, tool: b.name, detail: brief(b.input) });
+      if (b.type === 'tool_use') out.push({ type: 'tool_start', id: b.id, tool: b.name, detail: brief(b.input), _atype: b.input?.subagent_type });
       else if (b.type === 'tool_result') out.push({ type: 'tool_end', tool_use_id: b.tool_use_id });
       else if (b.type === 'text') out.push({ type: obj.type === 'user' ? 'user_prompt' : 'say' });
       else if (b.type === 'thinking') out.push({ type: 'say' });
     }
   }
   for (const e of out) {
-    const evt = { ...base, ...e };
+    const { _atype, ...rest } = e;
+    const evt = { ...base, ...rest };
     if (e.type === 'tool_start' && DELEGATE.has(e.tool)) {
-      delegations.push({ parent: agent, projectDir: projectDirOf(file), tool_use_id: e.id, ts: Date.now(), claimed: false });
+      delegations.push({ parent: agent, projectDir: projectDirOf(file), tool_use_id: e.id, ts: Date.now(), claimed: false, atype: _atype ? String(_atype).slice(0, 60) : null });
       while (delegations.length > 200) delegations.shift();
     }
     emitEvt(evt);

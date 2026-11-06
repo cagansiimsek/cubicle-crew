@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { Earner, dayKey } from './public/rules.js';
-import { buyItem, equipItem, setAvatar, grantAchievements, setupOffice, setPetName, giveTreat } from './public/catalog.js';
+import { buyItem, equipItem, setAvatar, grantAchievements, setupOffice, setPetName, giveTreat, setCrew, seeCrew, crewKey, setOffice } from './public/catalog.js';
 import { Stats } from './stats.js';
 
 const DIR = process.env.PIXEL_OFFICE_HOME || path.join(os.homedir(), '.pixel-office');
@@ -23,7 +23,7 @@ const fresh = () => ({
 // записи отпреди началната настройка: не я показваме (котката им си остава)
 const load = (s) => ({ ...fresh(), setup: 'legacy', ...s });
 // полетата, които клиентът получава при промяна на обзавеждането
-const DECOR_KEYS = ['owned', 'equipped', 'achievements', 'avatar', 'petNames', 'starter', 'setup'];
+const DECOR_KEYS = ['owned', 'equipped', 'achievements', 'avatar', 'petNames', 'starter', 'setup', 'crew', 'crewSeen', 'officeName', 'pictures'];
 
 function readJson(f) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } }
 function alive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
@@ -94,6 +94,12 @@ export class Wallet {
       while (this.info.size > 500) this.info.delete(this.info.keys().next().value);
     }
     if (this.owner) this.stats.event(evt);
+    // екипът: кой колега е идвал (проект / тип под-агент) – за раздел „Екип“
+    if (this.owner && (evt?.type === 'tool_start' || evt?.type === 'user_prompt')) {
+      const k = crewKey(evt), ch = k ? seeCrew(this.save, k, evt.subagent ? evt.atype || evt.provider || '' : evt.label) : 0;
+      if (ch) this.dirty = true;
+      if (ch === 2) this.broadcast(this.msg(0, 'crew', null, null, true));
+    }
     for (const b of this.earner.ingest(evt)) this.add(b.amount, b.reason, b.src);
   }
 
@@ -167,6 +173,8 @@ export class Wallet {
       : kind === 'setup' ? setupOffice(this.save, body)
       : kind === 'pet' ? setPetName(this.save, String(body.slot), body.name)
       : kind === 'treat' ? giveTreat(this.save) // лакомство за любимец (фиксирана цена)
+      : kind === 'crew' ? setCrew(this.save, body) // колега от раздел „Екип“: име / външен вид
+      : kind === 'office' ? setOffice(this.save, body) // табелата и твоите картини на стената
       : equipItem(this.save, String(body.slot), body.item == null ? null : String(body.item));
     if (r.ok) {
       this.dirty = true;

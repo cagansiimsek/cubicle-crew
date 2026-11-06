@@ -46,6 +46,7 @@ export const TABS = [
   { id: 'pets', groups: ['cat', 'catslot', 'dog', 'exotic'] },
   { id: 'special', groups: ['neon', 'espresso', 'aquarium', 'arcade', 'massage'], merge: true },
   { id: 'avatar', groups: [] },
+  { id: 'crew', groups: [] },     // екипът: постоянните колеги (проекти и видове помощници)
   { id: 'stats', groups: [] },
   { id: 'weather', groups: [] },
   { id: 'trophies', groups: [] },
@@ -55,16 +56,133 @@ export const TABS = [
 // Аватар на оркестраторите (★) – безплатен, един и същ всеки път. Индекси в SKINS / HAIRS от palette.js;
 // body: 0 = мъж, 1 = жена; style/top/bottom: индекси в AVATAR_HAIR/AVATAR_TOPS/AVATAR_BOTTOMS[m|f] от sprites.js.
 // Старите записи нямат тези полета -> 0. Мъжът винаги е с панталон (avatarLook пренебрегва bottom).
-// Под-агентите остават случайни (по id).
-export const AVATAR = { skins: 6, hairs: 10, styles: 4, tops: 6, bottoms: 3, def: { skin: 1, hair: 1, glasses: false, body: 0, style: 0, top: 0, bottom: 0 } };
+// Новите (2.22) полета са по желание: head (HEADS), beard (BEARDS), earrings, short, legs (PANTS/SKIRTS), shoes,
+// iris, accent, desk (DESK_ITEMS) – липсват -> както досега. Броят им е тук, защото модулът е общ със сървъра
+// (test/crew.test.js проверява, че съвпада с palette.js / sprites.js).
+export const AVATAR = {
+  skins: 6, hairs: 10, styles: { m: 6, f: 8 }, tops: 6, bottoms: 3,
+  heads: 4, beards: 4, legs: 6, tights: 6, shoes: 4, iris: 6, accents: 8, desks: 9,
+  def: { skin: 1, hair: 1, glasses: false, body: 0, style: 0, top: 0, bottom: 0 },
+};
 export const avatarOf = (save) => save?.avatar || AVATAR.def;
-export function setAvatar(save, a) {
-  const skin = Number(a?.skin), hair = Number(a?.hair), body = Number(a?.body ?? 0), style = Number(a?.style ?? 0);
-  const top = Number(a?.top ?? 0), bottom = Number(a?.bottom ?? 0);
+
+/** Проверява и нормализира описание на човек (аватар или колега); null = невалидно. */
+export function cleanAv(a) {
+  if (!a || typeof a !== 'object') return null;
+  const num = (k, def = 0) => (a[k] === undefined || a[k] === null ? def : Number(a[k]));
   const idx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
-  if (!Number.isInteger(skin) || skin < 0 || skin >= AVATAR.skins || !Number.isInteger(hair) || hair < 0 || hair >= AVATAR.hairs) return { ok: false, error: 'avatar' };
-  if ((body !== 0 && body !== 1) || !idx(style, AVATAR.styles) || !idx(top, AVATAR.tops) || !idx(bottom, AVATAR.bottoms)) return { ok: false, error: 'avatar' };
-  save.avatar = { skin, hair, glasses: !!a.glasses, body, style, top, bottom: body === 1 ? bottom : 0 };
+  const body = num('body'), g = body === 1 ? 'f' : 'm';
+  const out = { skin: num('skin', -1), hair: num('hair', -1), glasses: !!a.glasses, body, style: num('style'), top: num('top'), bottom: body === 1 ? num('bottom') : 0 };
+  if (!idx(out.skin, AVATAR.skins) || !idx(out.hair, AVATAR.hairs) || (body !== 0 && body !== 1)) return null;
+  if (!idx(out.style, AVATAR.styles[g]) || !idx(out.top, AVATAR.tops) || !idx(out.bottom, AVATAR.bottoms)) return null;
+  // незадължителните – само ако са подадени
+  for (const [k, n] of [['head', AVATAR.heads], ['beard', AVATAR.beards], ['legs', AVATAR.legs], ['tights', AVATAR.tights], ['shoes', AVATAR.shoes], ['iris', AVATAR.iris], ['accent', AVATAR.accents], ['desk', AVATAR.desks]]) {
+    if (a[k] === undefined || a[k] === null) continue;
+    const v = Number(a[k]);
+    if (!idx(v, n)) return null;
+    out[k] = v;
+  }
+  if (a.earrings !== undefined) out.earrings = !!a.earrings;
+  if (a.short !== undefined) out.short = !!a.short;
+  if (body === 0) delete out.earrings;
+  if (body === 0 && out.beard === undefined) out.beard = 0;
+  if (body === 1) delete out.beard;
+  return out;
+}
+export function setAvatar(save, a) {
+  const av = cleanAv(a);
+  if (!av) return { ok: false, error: 'avatar' };
+  save.avatar = av;
+  return { ok: true };
+}
+
+// ---- екипът: постоянни колеги ----
+// Всеки главен агент е „човекът на проекта“ (ключ p:<етикет>), всеки под-агент – „човекът на типа“
+// (t:<agentType>, напр. t:explore, t:general-purpose, t:<твой агент от .claude/agents>). Без запис лицето е
+// случайно, но постоянно по ключа (randomAv). save.crew[key] = { name?, av? } – промените от раздел „Екип“;
+// save.crewSeen[key] = { at, label } – кой е идвал (пише сървърът, за списъка в раздела).
+export const CREW_MAX = 120, CREW_SEEN_MAX = 60, CREW_NAME_MAX = 20;
+const keyPart = (v) => String(v ?? '').trim().toLowerCase().replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 60);
+/** Ключът на човека за събитие/агент: { label, subagent, atype, provider }. null = няма какво да се пази. */
+export function crewKey(ev) {
+  if (!ev) return null;
+  if (ev.subagent) {
+    const t = keyPart(ev.atype) || (ev.provider ? keyPart(ev.provider) + '-helper' : 'general-purpose');
+    return 't:' + t;
+  }
+  const p = keyPart(ev.label);
+  return p ? 'p:' + p : null;
+}
+export const crewKeyOk = (k) => typeof k === 'string' && /^[pt]:./.test(k) && k.length <= 64;
+export function cleanCrewName(name) {
+  return String(name ?? '').replace(/\s+/g, ' ').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, CREW_NAME_MAX);
+}
+/** Промяна на колега: { key, name?, av? } (av: null = пак случаен; reset: true = изцяло по подразбиране). */
+export function setCrew(save, body = {}) {
+  const key = body.key;
+  if (!crewKeyOk(key)) return { ok: false, error: 'crew' };
+  save.crew ||= {};
+  if (body.reset) { delete save.crew[key]; return { ok: true }; }
+  const cur = { ...(save.crew[key] || {}) };
+  if ('name' in body) { const n = cleanCrewName(body.name); if (n) cur.name = n; else delete cur.name; }
+  if ('av' in body) {
+    if (body.av === null) delete cur.av;
+    else { const av = cleanAv(body.av); if (!av) return { ok: false, error: 'avatar' }; cur.av = av; }
+  }
+  if (!cur.name && !cur.av) delete save.crew[key];
+  else {
+    if (!save.crew[key] && Object.keys(save.crew).length >= CREW_MAX) return { ok: false, error: 'full' };
+    save.crew[key] = cur;
+  }
+  return { ok: true };
+}
+/** Сървърът отбелязва, че човекът е идвал (най-много веднъж на 10 мин). 0 = нищо, 1 = обновено, 2 = нов. */
+export function seeCrew(save, key, label, now = Date.now()) {
+  if (!crewKeyOk(key)) return 0;
+  save.crewSeen ||= {};
+  const cur = save.crewSeen[key];
+  const lab = String(label ?? '').slice(0, 60);
+  if (cur && now - cur.at < 600000 && cur.label === lab) return 0;
+  save.crewSeen[key] = { at: now, label: lab };
+  const keys = Object.keys(save.crewSeen);
+  if (keys.length > CREW_SEEN_MAX) {
+    keys.sort((p, q) => save.crewSeen[p].at - save.crewSeen[q].at);
+    for (const k of keys.slice(0, keys.length - CREW_SEEN_MAX)) delete save.crewSeen[k];
+  }
+  return cur ? 1 : 2;
+}
+
+// ---- моят офис: име на табелата + твои картини на стената ----
+// save.officeName – текстът на табелата над дъската; save.pictures[i] = { pal: ['#rrggbb'…] (≤16), px: PIC_W*PIC_H
+// шестнайсетични цифри (индекси в pal) } – картинката е направена в браузъра (shop.js pixelize), на сървъра идват
+// само тези числа. i: 0 = над диспенсъра, 1–2 = между прозорците (колкото постери има в стаята).
+export const PIC_W = 14, PIC_H = 18, PIC_SLOTS = 3, OFFICE_NAME_MAX = 24;
+export function cleanOfficeName(name) {
+  return String(name ?? '').replace(/\s+/g, ' ').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, OFFICE_NAME_MAX);
+}
+export function cleanPic(p) {
+  if (!p || typeof p !== 'object' || !Array.isArray(p.pal)) return null;
+  const pal = p.pal.slice(0, 17), px = String(p.px ?? '').toLowerCase();
+  if (!pal.length || pal.length > 16 || !pal.every((c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c))) return null;
+  if (px.length !== PIC_W * PIC_H || !/^[0-9a-f]+$/.test(px)) return null;
+  for (const ch of px) if (parseInt(ch, 16) >= pal.length) return null;
+  return { pal: pal.map((c) => c.toLowerCase()), px };
+}
+/** { name } – табелата; { picture: i, pic | null } – картина i (null = пак постерът). */
+export function setOffice(save, b = {}) {
+  if ('picture' in b) {
+    const i = Number(b.picture);
+    if (!Number.isInteger(i) || i < 0 || i >= PIC_SLOTS) return { ok: false, error: 'picture' };
+    const pic = b.pic === null ? null : cleanPic(b.pic);
+    if (b.pic !== null && !pic) return { ok: false, error: 'picture' };
+    const list = Array.from({ length: PIC_SLOTS }, (_, k) => save.pictures?.[k] || null);
+    list[i] = pic;
+    save.pictures = list;
+  }
+  if ('name' in b) {
+    const n = cleanOfficeName(b.name);
+    if (n) save.officeName = n; else delete save.officeName;
+  }
   return { ok: true };
 }
 

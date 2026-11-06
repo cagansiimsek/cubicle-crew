@@ -19,6 +19,11 @@
   #stage { position: fixed; left: 0; top: 0; }
   #c { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
   #overlay { position: absolute; left: 0; top: 0; pointer-events: none; overflow: hidden; }
+  /* табелата с името на офиса (месинг) над дъската */
+  #overlay .sign { position: absolute; transform: translate(-50%, -62%); padding: 0 .7em; font-weight: 700; line-height: 1.45; color: #3a2810;
+    background: linear-gradient(#f0d488, #c89a48); border: 1px solid #5a3c18; border-radius: 2px; box-shadow: 0 1px 0 rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.35);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .04em; }
+  #overlay .sign[hidden] { display: none; }
 
   /* етикет под бюрото */
   .tag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px; max-width: var(--label-max);
@@ -203,6 +208,29 @@
   .shop-panel section > .hint { margin: 6px 0 0; font-size: 12px; color: var(--ui-dim); }
   .shop-panel section > .act { justify-content: flex-start; margin-top: 6px; }
   .shop-panel .avatar .hint { margin: 12px 0 0; font-size: 12px; color: var(--ui-dim); }
+  .shop-panel .avatar .sw.desk button { padding: 2px 4px; min-height: 36px; }
+  .shop-panel .avatar .sw.desk canvas { display: block; }
+  .shop-panel .avatar .reset { margin-top: 12px; }
+  /* „Моят офис“: табела + твои картини */
+  .shop-panel .mine .pics { display: flex; flex-wrap: wrap; gap: 8px; }
+  .shop-panel .mine .pic { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; background: #1f1a2c; border: 1px solid #2c2640; border-radius: 3px; width: 120px; text-align: center; }
+  .shop-panel .mine .pic canvas { width: 48px; height: 60px; }
+  .shop-panel .mine .pic .nm { font-size: 11px; color: var(--ui-dim); }
+  .shop-panel .mine .pic .act { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  /* „Екип“: постоянните колеги */
+  .shop-panel .crew { padding-top: 6px; }
+  .shop-panel .crew .intro { margin: 0 0 6px; font-size: 12px; color: var(--ui-dim); max-width: 560px; }
+  .shop-panel .crew .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+  .shop-panel .crew .person { display: flex; gap: 8px; align-items: center; text-align: left; padding: 4px 8px 4px 4px; background: #1f1a2c; border-color: #2c2640; min-width: 0; }
+  .shop-panel .crew .person:hover { border-color: #6b6b80; }
+  .shop-panel .crew .person.here { border-color: #3c6a4a; }
+  .shop-panel .crew .person canvas { flex: none; border-radius: 2px; }
+  .shop-panel .crew .tx { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .shop-panel .crew .tx > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shop-panel .crew .dim { font-size: 11px; color: var(--ui-dim); }
+  .shop-panel .crew .tx .in { font-size: 10px; color: #4ac26b; }
+  .shop-panel .crew .crewtop { display: flex; gap: 10px; align-items: center; margin: 0 0 8px; }
+  .shop-panel .crew .crewtop b { font-size: 14px; }
   .shop-panel .weather { padding-top: 8px; max-width: 560px; }
   .shop-panel .weather h3:first-child { margin-top: 0; }
   .shop-panel .weather .cur { margin: 0 0 10px; }

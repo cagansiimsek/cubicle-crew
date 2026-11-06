@@ -196,8 +196,8 @@ export const HAIR_STYLES = {
 export const HAIR_MALE = ['short', 'spiky', 'side', 'quiff', 'buzz', 'curly'];
 export const HAIR_FEMALE = ['long', 'wavy', 'bob', 'pony', 'braid', 'bun', 'pixie', 'curly'];
 export const HAIR_NAMES = Object.keys(HAIR_STYLES);
-// прическите, от които избира аватарът (по 4 за тяло; индексът е save data)
-export const AVATAR_HAIR = { m: ['short', 'side', 'quiff', 'spiky'], f: ['long', 'pony', 'bob', 'bun'] };
+// прическите, от които избира аватарът (индексът е save data – нови само в края)
+export const AVATAR_HAIR = { m: ['short', 'side', 'quiff', 'spiky', 'buzz', 'curly'], f: ['long', 'pony', 'bob', 'bun', 'wavy', 'braid', 'pixie', 'curly'] };
 // дрехите на аватара (индексите също са save data; 0 = досегашната фиксирана дреха). Мъжът е само с панталон.
 export const AVATAR_TOPS = { m: ['collar', 'tee', 'tie', 'hoodie', 'vneck', 'stripe'], f: ['blouse', 'scoop', 'vneck', 'tee', 'hoodie', 'stripe'] };
 export const AVATAR_BOTTOMS = { m: ['pants'], f: ['skirt', 'pants', 'dress'] };
@@ -212,6 +212,16 @@ const BEANIE = [
   '.vvvvvvvvvvvv.',
   '.vNvvNvvNvvNv.',
 ];
+// шапка с козирка (цветът на акцента); козирката отпред / встрани
+const CAP = [
+  '..............',
+  '....nnnnnn....',
+  '..nnvvnnnnnN..',
+  '.nnvnnnnnnnNN.',
+  '.nnnnnnnnnnnN.',
+  '.NnnnnnnnnnNN.',
+];
+const CAP_BRIM = '..vvvvvvvvvv..';
 const HEADPHONES = [
   '..............',
   '...HHHHHHHH...',
@@ -643,6 +653,11 @@ function drawAccessories(g, look, face, headDy) {
     }
   }
   if (look.acc.includes('beanie')) g.map(BEANIE, 5, oy);
+  if (look.acc.includes('cap')) {
+    g.map(CAP, 5, oy);
+    if (face === 'front') g.map([CAP_BRIM], 5, oy + 6);
+    else if (face === 'side') { g.rect('v', 16, oy + 6, 5, 1); g.rect('n', 18, oy + 5, 2, 1); }
+  }
   if (look.acc.includes('headphones')) g.map(HEADPHONES, 5, oy);
 }
 
@@ -738,77 +753,80 @@ function compose(look, poseName, eyesOverride) {
 }
 
 // ---------------------------------------------------------------------
-// Външен вид от id (детерминирано)
+// Външен вид. Един човек = описание с индекси (av), което може да се редактира и пази в save.json:
+//  body 0 мъж / 1 жена, skin, hair (цвят), style (AVATAR_HAIR[m|f]), top, bottom, glasses,
+//  head (HEADS), beard (BEARDS), earrings, short (къс ръкав), legs (панталон/пола), tights, shoes, iris,
+//  accent (вратовръзка/шапка), desk (DESK_ITEMS – личната вещ на бюрото). Липсващо поле = старото поведение.
+// randomAv(key) дава случаен, но постоянен човек за даден ключ (проект, тип под-агент…).
 // ---------------------------------------------------------------------
-const TOPS_M = ['tee', 'collar', 'tie', 'hoodie', 'vneck', 'stripe'];
-const TOPS_F = ['blouse', 'scoop', 'vneck', 'tee', 'hoodie', 'stripe'];
 const SHORT_OK = new Set(['tee', 'vneck', 'scoop', 'blouse', 'stripe']);
+export const HEADS = [null, 'headphones', 'beanie', 'cap'];
+export const BEARDS = [null, 'stubble', 'beard', 'mustache'];
+export const DESK_ITEMS = [null, 'photo', 'cactus', 'duck', 'robot', 'globe', 'trophy', 'plant', 'books'];
+export const canShort = (av) => SHORT_OK.has(AVATAR_TOPS[av.body === 1 ? 'f' : 'm'][av.top] || '');
 
-export function lookFor(id, isSub) {
-  const r = rng(hashStr(String(id)));
-  const fem = r() < 0.5;
+export function randomAv(key) {
+  const r = rng(hashStr(String(key)));
+  const fem = r() < 0.5, g = fem ? 'f' : 'm';
   const accRoll = r();
-  const acc = [];
-  if (accRoll < 0.26) acc.push('glasses');
-  else if (accRoll < 0.40) acc.push('headphones');
-  else if (accRoll < 0.50) acc.push('beanie');
-  else if (accRoll < 0.56) acc.push('glasses', 'headphones');
-  else if (accRoll < 0.60) acc.push('glasses', 'beanie');
-  const hairIdx = r.int(HAIRS.length);
+  let glasses = false, head = 0;
+  if (accRoll < 0.26) glasses = true;
+  else if (accRoll < 0.38) head = 1;
+  else if (accRoll < 0.46) head = 2;
+  else if (accRoll < 0.52) head = 3;
+  else if (accRoll < 0.57) { glasses = true; head = 1; }
+  else if (accRoll < 0.60) { glasses = true; head = 2; }
+  const hi = r.int(HAIRS.length);
   // ярките бои за коса по-рядко
-  const hair = hairIdx >= 6 && r() < 0.6 ? HAIRS[r.int(6)] : HAIRS[hairIdx];
-  const styles = r() < 0.08 ? (fem ? ['buzz', 'side'] : ['pony', 'long']) : (fem ? HAIR_FEMALE : HAIR_MALE);
-  const bottom = fem ? r.pick(['pants', 'skirt', 'skirt', 'dress']) : 'pants';
-  let top = r.pick(fem ? TOPS_F : TOPS_M);
-  if (bottom === 'dress' && (top === 'hoodie' || top === 'stripe')) top = 'scoop';
+  const hair = hi >= 6 && r() < 0.6 ? r.int(6) : hi;
+  const style = r.int(AVATAR_HAIR[g].length);
+  const bottom = fem ? r.pick([1, 0, 0, 2]) : 0;
+  let top = r.int(AVATAR_TOPS[g].length);
+  if (AVATAR_BOTTOMS[g][bottom] === 'dress' && !DRESS_TOPS.has(AVATAR_TOPS[g][top])) top = 1; // scoop
+  const short = SHORT_OK.has(AVATAR_TOPS[g][top]) && r() < 0.6;
+  const legs = r.int(AVATAR_BOTTOMS[g][bottom] === 'skirt' ? SKIRTS.length : PANTS.length);
   const fh = r();
   return {
-    id, fem,
-    skin: r.pick(SKINS),
-    hairColor: hair,
-    hair: r.pick(styles),
-    top, bottom,
-    short: SHORT_OK.has(top) && r() < 0.6,
-    pants: bottom === 'pants' ? r.pick(PANTS) : r.pick(SKIRTS),
-    tights: r.pick(TIGHTS),
-    shoes: r.pick(SHOES),
-    iris: r.pick(IRIS),
-    beard: fem ? null : fh < 0.14 ? 'beard' : fh < 0.26 ? 'stubble' : fh < 0.34 ? 'mustache' : null,
-    earrings: fem && r() < 0.65,
-    accent: r.pick(ACCENTS),
-    mug: r.pick(MUGS),
-    acc,
-    badge: !!isSub,
-    variant: r.int(1000),
-    seed: hashStr(String(id) + 'desk'),
+    body: fem ? 1 : 0, skin: r.int(SKINS.length), hair, style, top, bottom, glasses, head,
+    beard: fem ? 0 : fh < 0.14 ? 2 : fh < 0.26 ? 1 : fh < 0.34 ? 3 : 0,
+    earrings: fem && r() < 0.65, short, legs,
+    tights: fem ? r.int(TIGHTS.length) : 0,
+    shoes: r.int(SHOES.length), iris: r.int(IRIS.length), accent: r.int(ACCENTS.length),
+    desk: r() < 0.4 ? 1 + r.int(DESK_ITEMS.length - 1) : 0,
+    mug: r.int(MUGS.length), variant: r.int(1000),
   };
 }
 
-/** Аватарът на оркестраторите: тяло, прическа, кожа, цвят на косата и очила от потребителя; останалото е фиксирано. */
-export function avatarLook(av, id) {
+/** Случаен човек по id (за куриера, атласа и старите места, които нямат ключ). */
+export function lookFor(id, isSub) { return avatarLook(randomAv(id), id, isSub); }
+
+/** Описание (av) -> външен вид за спрайтовете. Стар аватар без новите полета изглежда точно както преди. */
+export function avatarLook(av, id, isSub = false) {
   const fem = av.body === 1, g = fem ? 'f' : 'm';
   const styles = AVATAR_HAIR[g];
   const bottom = AVATAR_BOTTOMS[g][av.bottom] || AVATAR_BOTTOMS[g][0];
   let top = AVATAR_TOPS[g][av.top] || AVATAR_TOPS[g][0];
   if (bottom === 'dress' && !DRESS_TOPS.has(top)) top = 'scoop';
+  const legs = av.legs ?? null;
   return {
     id, fem,
     skin: SKINS[av.skin] || SKINS[1],
     hairColor: HAIRS[av.hair] || HAIRS[1],
     hair: styles[av.style] || styles[0],
     top, bottom,
-    short: false,
-    pants: bottom === 'skirt' ? SKIRTS[0] : fem ? PANTS[3] : PANTS[0],
-    tights: null,
-    shoes: fem ? SHOES[3] : SHOES[0],
-    iris: IRIS[0],
-    beard: null,
-    earrings: fem,
-    accent: ACCENTS[1],
-    mug: MUGS[2],
-    acc: av.glasses ? ['glasses'] : [],
-    badge: false,
-    variant: 0,
+    short: !!av.short && SHORT_OK.has(top),
+    pants: bottom === 'skirt' ? SKIRTS[legs ?? 0] || SKIRTS[0] : (legs != null && PANTS[legs]) || (fem ? PANTS[3] : PANTS[0]),
+    tights: bottom !== 'pants' ? TIGHTS[av.tights] || null : null,
+    shoes: SHOES[av.shoes] || (fem ? SHOES[3] : SHOES[0]),
+    iris: IRIS[av.iris] || IRIS[0],
+    beard: fem ? null : BEARDS[av.beard] || null,
+    earrings: fem && av.earrings !== false,
+    accent: ACCENTS[av.accent ?? 1] || ACCENTS[1],
+    mug: MUGS[av.mug ?? 2] || MUGS[2],
+    acc: [av.glasses ? 'glasses' : null, HEADS[av.head] || null].filter(Boolean),
+    desk: DESK_ITEMS[av.desk] || null,
+    badge: !!isSub,
+    variant: av.variant || 0,
     seed: hashStr(String(id) + 'desk'),
   };
 }

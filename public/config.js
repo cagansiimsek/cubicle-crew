@@ -78,6 +78,7 @@ const T_BG = {
   parentOf: 'Под-агенти',
   childOf: 'Под-агент на',
   agentKind: 'Агент',
+  colleague: 'Колега',
   model: 'Модел',
   context: 'Контекст',
   crashed: { title: 'Сесията прекъсна', hint: 'насред работа' },
@@ -219,7 +220,7 @@ const T_BG = {
   shop: {
     title: 'Магазин',
     open: 'Магазин (B)',
-    tabs: { walls: 'Стени', floor: 'Под и килими', furniture: 'Мебели', decor: 'Декор', pets: 'Любимци', special: 'Специални', avatar: 'Аватар', stats: 'Статистика', weather: 'Времето', trophies: 'Постижения', album: 'Албум' },
+    tabs: { walls: 'Стени', floor: 'Под и килими', furniture: 'Мебели', decor: 'Декор', pets: 'Любимци', special: 'Специални', avatar: 'Аватар', crew: 'Екип', stats: 'Статистика', weather: 'Времето', trophies: 'Постижения', album: 'Албум' },
     album: {
       total: (n, m) => `Колекция ${n} / ${m}`, trophies: (n, m) => `Постижения ${n} / ${m}`,
       fair: 'Всяко нещо има точна цена и се купува направо – без случайни кутии и без лов на редки предмети. Посочи силует, за да го пробваш в офиса; клик – към раздела му.',
@@ -236,7 +237,15 @@ const T_BG = {
     need: (n) => `още ${n}`,
     hint: 'Посочи предмет – виждаш го в офиса. Затвори с Esc.',
     errors: { avatar: 'Невалиден аватар.', funds: 'Нямаш достатъчно монети.', locked: 'Първо го купи.', busy: 'Друг Cubicle Crew брои монетите – опитай пак след малко.', offline: 'Няма връзка със сървъра.',
-      pets: 'В офиса има място за най-много 3 любимци – първо прибери някой у дома.', season: 'Продава се само в сезона си.' },
+      pets: 'В офиса има място за най-много 3 любимци – първо прибери някой у дома.', season: 'Продава се само в сезона си.',
+      picture: 'Не става с тази картина – пробвай друга.', crew: 'Не стана – пробвай пак.' },
+    mine: {
+      title: 'Моят офис', name: 'Име на офиса', namePh: 'напр. Нощните сови ООД', save: 'Запази',
+      nameHint: 'Стои на месингова табела над дъската.',
+      pics: 'Твои картини', where: ['До диспенсъра', 'Между прозорците', 'Между прозорците (2)'],
+      choose: 'Избери снимка…', remove: 'Махни', busy: 'Рисувам…',
+      picHint: 'Снимката става на пиксели тук, на компютъра ти – никъде не се качва. Ако стаята е тясна и на това място няма постер, картината не се вижда.',
+    },
     seasonFrom: (d) => `от ${d}`,
     achievement: 'Постижение',
     reward: (n) => `+${n} монети`,
@@ -263,14 +272,28 @@ const T_BG = {
     },
     avatar: {
       body: 'Тяло', male: 'Мъж', female: 'Жена', style: 'Прическа',
-      styles: { m: ['Къса', 'На път', 'Перчем', 'Щръкнала'], f: ['Дълга', 'Опашка', 'Каре', 'Кок'] },
+      styles: { m: ['Къса', 'На път', 'Перчем', 'Щръкнала', 'Бръсната', 'Къдрава'], f: ['Дълга', 'Опашка', 'Каре', 'Кок', 'Вълниста', 'Плитка', 'Пикси', 'Къдрава'] },
       top: 'Горнище', bottom: 'Долнище',
       tops: { m: ['Риза с яка', 'Тениска', 'Вратовръзка', 'Суитшърт', 'V-деколте', 'Райе'], f: ['Блуза', 'Деколте с верижка', 'V-деколте', 'Тениска', 'Суитшърт', 'Райе'] },
       bottoms: ['Пола', 'Панталон', 'Рокля'],
       skin: 'Кожа', hair: 'Цвят на косата', glasses: 'Очила', without: 'Без', with: 'С очила',
-      hint: 'Безплатно. Това си ти: първият оркестратор (★) в офиса изглежда така при всяко пускане; останалите са случайни.',
+      hint: 'Безплатно. Това си ти: първият оркестратор (★) в офиса изглежда така при всяко пускане. Колегите са в раздел „Екип“.',
+      head: 'На главата', heads: ['Нищо', 'Слушалки', 'Плетена шапка', 'Шапка с козирка'],
+      beard: 'Брада', beards: ['Без', 'Набола', 'Брада', 'Мустак'],
+      earrings: 'Обеци', sleeves: 'Ръкав', sleeve: ['Дълъг', 'Къс'],
+      legs: 'Цвят на панталона', skirt: 'Цвят на полата', shoes: 'Обувки', iris: 'Очи', accent: 'Акцент (вратовръзка, шапка)',
+      desk: 'На бюрото', desks: ['Нищо', 'Снимка', 'Кактус', 'Патенце', 'Робот', 'Глобус', 'Купа', 'Растение', 'Книги'],
       skins: ['Много светла', 'Светла', 'Средна', 'Мургава', 'Тъмна', 'Много тъмна'],
       hairs: ['Черна', 'Кестенява', 'Светлокестенява', 'Руса', 'Рижа', 'Сива', 'Синя', 'Розова', 'Зелена', 'Лилава'],
+    },
+    crew: {
+      intro: 'Всеки проект си има свой човек, всеки вид помощник (Explore, Plan, твоите агенти) – също. Идват всеки път с едно и също лице. Дай им имена и ги облечи както искаш.',
+      leads: 'Проекти', subs: 'Помощници', here: 'В офиса', you: 'Ти',
+      name: 'Име', namePh: (n) => `напр. ${n}`, reset: 'Наново случаен', back: '← Целият екип', edit: 'Промени',
+      empty: 'Още никой не е идвал. Щом пуснеш агент, той ще се появи тук.',
+      lead: (p) => `Отговаря за ${p}`, sub: (t) => `Помощник · ${t}`,
+      twin: 'Когато двама от един проект или вид работят едновременно, вторият е друг човек.',
+      avatarNote: 'Първият оркестратор в офиса носи твоя аватар – този колега се вижда, когато работи втори.',
     },
   },
   // еднократни известия за новости (tokens.js news())
@@ -280,6 +303,11 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.22.0': [
+        ['Твоят екип', 'Всеки проект вече си има свой човек, а всеки вид помощник (Explore, Plan, твоите собствени агенти) – също. Идват всеки път с едно и също лице и име. В новия раздел „Екип“ в магазина ги преименуваш и обличаш както искаш.'],
+        ['Повече за аватара', 'Нови прически, брада и мустаци, шапка с козирка, плетена шапка или слушалки, къс ръкав, цвят на панталона, обувките и очите – и лична вещ на бюрото (снимка, кактус, патенце, глобус…). Същото важи и за колегите.'],
+        ['Моят офис', 'Раздел „Декор“: име на офиса на месингова табела над дъската и до три твои картини на стената на мястото на постерите. Снимката става на пиксели на твоя компютър – никъде не се качва.'],
+      ],
       '2.21.1': [['Точките не застъпват имена', 'Свитата до цветна точка табелка вече не ляга върху името на друг агент – ако няма място и за точката, се скрива (посочи агента и се вижда).']],
       '2.21.0': [
         ['Имената не се трупат', 'Когато много агенти са близо един до друг, етикетите им се разминават: по-маловажният слиза ред по-долу или остава само цветната точка (посочи я и името се вижда). Балонче, което закрива по-важно, се скрива. Червеното „Чака теб“ винаги остава отгоре.'],
@@ -429,6 +457,7 @@ const T_EN = {
   parentOf: 'Sub-agents',
   childOf: 'Sub-agent of',
   agentKind: 'Agent',
+  colleague: 'Colleague',
   model: 'Model',
   context: 'Context',
   crashed: { title: 'Session ended', hint: 'in the middle of the work' },
@@ -567,7 +596,7 @@ const T_EN = {
   shop: {
     title: 'Shop',
     open: 'Shop (B)',
-    tabs: { walls: 'Walls', floor: 'Floor & rugs', furniture: 'Furniture', decor: 'Decor', pets: 'Pets', special: 'Special', avatar: 'Avatar', stats: 'Stats', weather: 'Weather', trophies: 'Achievements', album: 'Album' },
+    tabs: { walls: 'Walls', floor: 'Floor & rugs', furniture: 'Furniture', decor: 'Decor', pets: 'Pets', special: 'Special', avatar: 'Avatar', crew: 'Crew', stats: 'Stats', weather: 'Weather', trophies: 'Achievements', album: 'Album' },
     album: {
       total: (n, m) => `Collection ${n} / ${m}`, trophies: (n, m) => `Achievements ${n} / ${m}`,
       fair: 'Everything has a fixed price and is bought directly – no loot boxes, no hunting for rare drops. Hover a silhouette to try it in the office; click to jump to its tab.',
@@ -584,7 +613,15 @@ const T_EN = {
     need: (n) => `${n} more`,
     hint: 'Hover an item to preview it in the office. Esc closes.',
     errors: { avatar: 'Invalid avatar.', funds: 'Not enough coins.', locked: 'Buy it first.', busy: 'Another Cubicle Crew is counting coins – try again in a moment.', offline: 'No connection to the server.',
-      pets: 'The office has room for 3 pets at most – send one home first.', season: 'Only sold in its season.' },
+      pets: 'The office has room for 3 pets at most – send one home first.', season: 'Only sold in its season.',
+      picture: "That picture didn't work – try another one.", crew: "That didn't work – try again." },
+    mine: {
+      title: 'My office', name: 'Office name', namePh: 'e.g. Night Owls Ltd.', save: 'Save',
+      nameHint: 'Shown on a brass plaque above the whiteboard.',
+      pics: 'Your pictures', where: ['By the water cooler', 'Between the windows', 'Between the windows (2)'],
+      choose: 'Choose a picture…', remove: 'Remove', busy: 'Drawing…',
+      picHint: 'The picture is turned into pixels right here on your computer – it is not uploaded anywhere. If the room is narrow and has no poster at that spot, the picture is not shown.',
+    },
     seasonFrom: (d) => `from ${d}`,
     achievement: 'Achievement',
     reward: (n) => `+${n} coins`,
@@ -611,14 +648,28 @@ const T_EN = {
     },
     avatar: {
       body: 'Body', male: 'Man', female: 'Woman', style: 'Hairstyle',
-      styles: { m: ['Short', 'Side part', 'Quiff', 'Spiky'], f: ['Long', 'Ponytail', 'Bob', 'Bun'] },
+      styles: { m: ['Short', 'Side part', 'Quiff', 'Spiky', 'Buzz cut', 'Curly'], f: ['Long', 'Ponytail', 'Bob', 'Bun', 'Wavy', 'Braid', 'Pixie', 'Curly'] },
       top: 'Top', bottom: 'Bottom',
       tops: { m: ['Collar shirt', 'T-shirt', 'Tie', 'Hoodie', 'V-neck', 'Stripes'], f: ['Blouse', 'Scoop neck', 'V-neck', 'T-shirt', 'Hoodie', 'Stripes'] },
       bottoms: ['Skirt', 'Trousers', 'Dress'],
       skin: 'Skin', hair: 'Hair colour', glasses: 'Glasses', without: 'None', with: 'Glasses',
-      hint: 'Free. This is you: the first orchestrator (★) in the office always looks like this; everyone else is random.',
+      hint: 'Free. This is you: the first orchestrator (★) in the office always looks like this. Your colleagues are in the Crew tab.',
+      head: 'On the head', heads: ['Nothing', 'Headphones', 'Beanie', 'Cap'],
+      beard: 'Beard', beards: ['None', 'Stubble', 'Beard', 'Moustache'],
+      earrings: 'Earrings', sleeves: 'Sleeves', sleeve: ['Long', 'Short'],
+      legs: 'Trousers colour', skirt: 'Skirt colour', shoes: 'Shoes', iris: 'Eyes', accent: 'Accent (tie, hat)',
+      desk: 'On the desk', desks: ['Nothing', 'Photo', 'Cactus', 'Rubber duck', 'Robot', 'Globe', 'Trophy', 'Plant', 'Books'],
       skins: ['Very light', 'Light', 'Medium', 'Tan', 'Dark', 'Very dark'],
       hairs: ['Black', 'Brown', 'Light brown', 'Blonde', 'Ginger', 'Grey', 'Blue', 'Pink', 'Green', 'Purple'],
+    },
+    crew: {
+      intro: 'Every project has its own person, and so does every kind of helper (Explore, Plan, your own agents). They come back with the same face every time. Give them names and dress them up.',
+      leads: 'Projects', subs: 'Helpers', here: 'In the office', you: 'You',
+      name: 'Name', namePh: (n) => `e.g. ${n}`, reset: 'Random again', back: '← Whole crew', edit: 'Edit',
+      empty: 'Nobody has come in yet. Start an agent and it shows up here.',
+      lead: (p) => `Works on ${p}`, sub: (t) => `Helper · ${t}`,
+      twin: 'When two from the same project or kind work at once, the second one is a different person.',
+      avatarNote: 'The first orchestrator in the office wears your avatar – this colleague shows when it works second.',
     },
   },
   whatsNew: {
@@ -627,6 +678,11 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.22.0': [
+        ['Your crew', 'Every project now has its own person, and so does every kind of helper (Explore, Plan, your own agents). They come back with the same face and name every time. Rename them and dress them up in the new Crew tab of the shop.'],
+        ['More for your avatar', 'New hairstyles, beards and moustaches, a cap, a beanie or headphones, short sleeves, trouser, shoe and eye colours – and a keepsake on your desk (a photo, a cactus, a rubber duck, a globe…). Your colleagues get all of it too.'],
+        ['My office', 'Decor tab: your office name on a brass plaque above the whiteboard, and up to three of your own pictures on the wall instead of the posters. The photo is turned into pixels on your computer – it is not uploaded anywhere.'],
+      ],
       '2.21.1': [['Dots stay off names', 'A label shrunk to its colour dot no longer lands on another agent\'s name – if there is no room even for the dot, it hides (point at the agent to see it).']],
       '2.21.0': [
         ['Names don\'t pile up', 'When many agents are close together, their labels make room: the less important one moves a row down or shrinks to its colour dot (point at it to see the name). A bubble that covers a more important one hides. The red "Needs you" always stays on top.'],
@@ -790,6 +846,28 @@ export const LANG = pickLang();
 export const T = LANG === 'bg' ? T_BG : T_EN;
 /** Име на предмет от магазина на текущия език. */
 export const itemName = (it) => T.items?.[it.id] || it.name;
+
+// имена на колегите по подразбиране (по ключа на човека и пола му – едно и също всеки път)
+const CREW_NAMES = {
+  bg: { m: ['Иван', 'Петър', 'Георги', 'Никола', 'Стефан', 'Димитър', 'Калоян', 'Мартин', 'Борис', 'Виктор', 'Христо', 'Ясен'],
+    f: ['Мария', 'Елена', 'Ива', 'Деси', 'Яна', 'Гергана', 'Нина', 'Роси', 'Вики', 'Теа', 'Ани', 'Цвети'] },
+  en: { m: ['Sam', 'Leo', 'Max', 'Noah', 'Owen', 'Theo', 'Jack', 'Ben', 'Felix', 'Hugo', 'Omar', 'Kai'],
+    f: ['Mia', 'Ava', 'Zoe', 'Ella', 'Lily', 'Nora', 'Ruby', 'Iris', 'Chloe', 'Emma', 'Maya', 'Lena'] },
+};
+const nameHash = (key) => { let h = 7; for (const ch of String(key || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+/** Имената на целия екип наведнъж: people = [{ key, fem, name? }] -> Map(key -> име). Своите имена се пазят,
+ *  останалите са постоянни по ключа, а ако две съвпаднат – следващото свободно (по реда на ключовете). */
+export function crewNames(people) {
+  const out = new Map(), used = new Set();
+  for (const p of people) if (p.name) { out.set(p.key, p.name); used.add(p.name); }
+  for (const p of people.filter((x) => !x.name).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))) {
+    const list = (CREW_NAMES[LANG] || CREW_NAMES.en)[p.fem ? 'f' : 'm'];
+    let i = nameHash(p.key) % list.length;
+    for (let n = 0; n < list.length && used.has(list[i]); n++) i = (i + 1) % list.length;
+    out.set(p.key, list[i]); used.add(list[i]);
+  }
+  return out;
+}
 /** Смяна на езика: запомня избора и презарежда (T е константа за цялата страница). */
 export function setLang(l) {
   try { localStorage.setItem('po.lang', l); } catch { /* */ }

@@ -66,6 +66,7 @@ export class Model {
     if (e.subagent) a.subagent = true;
     if (e.desc && !a.desc) a.desc = e.desc;
     if (e.model) a.model = e.model;
+    if (e.atype && !a.atype) a.atype = String(e.atype); // типът под-агент (Explore, Plan…) – постоянният колега
     if (e.background) a.background = true;
     if (e.parent_tool_use_id && !a.parentToolUseId) a.parentToolUseId = e.parent_tool_use_id;
     if (e.parent && e.parent !== a.parent && e.parent !== a.id) this.link(a.id, e.parent);

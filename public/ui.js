@@ -361,8 +361,26 @@ export class UI {
       (this.bridge ? `<span class="more">${P.global}</span>` : '');
   }
 
+  /** Табелата с името на офиса (save.officeName) – DOM върху горния ръб на дъската. */
+  syncSign() {
+    const name = this.office.officeName || '', b = this.office.room?.board;
+    const show = !!(name && b && this.cssScale >= 1.5 && !PARAMS.overlay);
+    if (!this.sign) { if (!show) return; this.sign = el('div', 'sign', this.overlay); }
+    this.sign.hidden = !show;
+    if (!show) return;
+    const key = name + '|' + b.x + '|' + b.y + '|' + b.w + '|' + this.cssScale;
+    if (key === this.signKey) return;
+    this.signKey = key;
+    this.sign.textContent = name;
+    this.sign.style.left = this.px(b.x + b.w / 2) + 'px';
+    this.sign.style.top = this.px(b.y) + 'px';
+    this.sign.style.maxWidth = this.px(b.w) + 'px';
+    this.sign.style.fontSize = Math.round(Math.min(14, Math.max(9, this.cssScale * 3.2))) + 'px';
+  }
+
   sync(now) {
     this.renderPrompt();
+    this.syncSign();
     const office = this.office;
     const seen = new Set();
     for (const a of office.actors.values()) {
@@ -532,6 +550,8 @@ export class UI {
       [T.project, (own ? `<b>${esc(own)}</b> · ` : '') + esc(ag.label) + ` <span class="dim">#${esc(shortId(ag.id, 8))}</span>`],
       [T.state, `<i class="dot" data-state="${st}" style="background:${STATES[st].color}"></i>${T.states[st]}`],
     ];
+    // постоянният колега (раздел „Екип“): името му и типът помощник
+    if (a.crewKey && a.id !== this.office.avatarId) rows.push([T.colleague, '<b>' + esc(this.office.nameOf(a.crewKey)) + '</b>' + (ag.subagent && ag.atype ? ' <span class="dim">· ' + esc(ag.atype) + '</span>' : '')]);
     if (ag.provider) rows.push([T.agentKind, esc(PROVIDERS[ag.provider] || ag.provider)]);
     if (ag.model) rows.push([T.model, esc(shortModel(ag.model))]);
     if (tool) rows.push([T.tool, `<b>${esc(tool.tool)}</b> ${dangerHtml(tool, priv ? '' : esc(shortDetail(tool.detail, 46)))}`]);

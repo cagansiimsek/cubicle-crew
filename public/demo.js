@@ -10,6 +10,8 @@ const FILES = ['src/app.ts', 'src/components/Header.tsx', 'server/routes/users.j
 const CMDS = ['npm test', 'npm run build', 'git status', 'cargo check', 'pytest -q', 'docker compose up -d', 'eslint src --fix', 'git push --force origin main'];
 const SEARCH = ['TODO', 'useEffect', 'class .*Service', 'export default', 'fetch\\('];
 const TASKS = ['Explore auth flow', 'Write unit tests', 'Review CSS', 'Find dead code', 'Migrate API v2'];
+// видове помощници (agentType) – всеки е постоянен колега в раздел „Екип“
+const DEMO_TYPES = ['Explore', 'general-purpose', 'Plan', 'code-reviewer'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -47,7 +49,7 @@ export function startDemo(ingest, model) {
   const alive = new Map();
   let projIdx = 0;
 
-  const emit = (a, e) => ingest({ agent: a.id, label: a.label, subagent: !!a.sub, parent: a.parent, parent_tool_use_id: a.parentTool, desc: a.desc, ts: Date.now(), ...e });
+  const emit = (a, e) => ingest({ agent: a.id, label: a.label, subagent: !!a.sub, parent: a.parent, parent_tool_use_id: a.parentTool, desc: a.desc, atype: a.atype, ts: Date.now(), ...e });
   const tool = async (a, name, detail, ms) => {
     const id = tid();
     emit(a, { type: 'tool_start', id, tool: name, detail });
@@ -57,7 +59,7 @@ export function startDemo(ingest, model) {
   const think = async (a, ms) => { emit(a, { type: 'say' }); await sleep(ms); };
 
   async function child(parent, toolId, desc) {
-    const c = { id: `${parent.id}-sub-${++uid}`, label: parent.label, sub: true, parent: parent.id, parentTool: toolId, desc };
+    const c = { id: `${parent.id}-sub-${++uid}`, label: parent.label, sub: true, parent: parent.id, parentTool: toolId, desc, atype: DEMO_TYPES[uid % DEMO_TYPES.length] };
     await think(c, 900);
     const steps = 3 + Math.floor(Math.random() * 4);
     for (let i = 0; i < steps && !parent.stop; i++) {
@@ -144,7 +146,7 @@ function showcase(ingest) {
     delay += 150;
     t.kids.forEach(([tool, detail, desc], k) => {
       const cid = `${t.id}-sub-${k}`;
-      const cemit = agent(cid, t.label, { subagent: true, parent: t.id, parent_tool_use_id: `t-${t.id}`, desc, provider: i === 0 ? null : PROVS[(k + 1) % PROVS.length] });
+      const cemit = agent(cid, t.label, { subagent: true, parent: t.id, parent_tool_use_id: `t-${t.id}`, desc, atype: i === 0 ? DEMO_TYPES[k % DEMO_TYPES.length] : undefined, provider: i === 0 ? null : PROVS[(k + 1) % PROVS.length] });
       setTimeout(() => { start(cemit, tool, detail, `t-${cid}`); keep(cemit); }, 600 + k * 900);
     });
   });

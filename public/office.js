@@ -1,17 +1,17 @@
 // Сцената: подредба, мебели, герои, маршрути, рисуване по слоеве.
-import { CFG, STATES, PARAMS } from './config.js';
+import { CFG, STATES, PARAMS, LANG, crewNames } from './config.js';
 import { computeLayout, POD } from './layout.js';
-import { buildRoom, buildPod, drawClearFloor, drawClearDynamic, drawSky, drawWallDynamic, vignette, drawLightFixtures, lightGlows, glow, glowE, drawAquariumFish, drawArcadeScreen, drawMassageLed, drawFountainWater, drawMug, DESK_MUG, drawShredderChew } from './environment.js';
+import { buildRoom, buildPod, drawDeskItem, drawClearFloor, drawClearDynamic, drawSky, drawWallDynamic, vignette, drawLightFixtures, lightGlows, glow, glowE, drawAquariumFish, drawArcadeScreen, drawMassageLed, drawFountainWater, drawMug, DESK_MUG, drawShredderChew } from './environment.js';
 import { flashAt } from './weather.js';
 import { gradeOf, applyGrade, lightCanvas, sunPatches, drawSunPatches, drawSunBeams, beamPoint, drawWetReflections } from './light.js';
 // без избран град: празна метеостанция ("--°") – клик върху нея отваря настройките
 const NO_WX = { kind: 'cloudy', temp: null, pop: null };
-import { resolveDecor, AVATAR, SLOTS, PET_SLOTS } from './catalog.js';
+import { resolveDecor, AVATAR, SLOTS, PET_SLOTS, crewKey } from './catalog.js';
 import { drawScreen } from './screens.js';
 import { Actor, Cat, Dog, Critter, DART_CYCLE, DART_RELEASE, HELD_LIFT } from './characters.js';
 import { grabZone, ShakeDetector, nearestFree, surfaceAt, inRect } from './petdrag.js';
 import { Life } from './life.js';
-import { avatarLook } from './sprites.js';
+import { avatarLook, randomAv } from './sprites.js';
 import { prefs } from './prefs.js';
 import { drawBoardScreen, boardGlow, boardMoving, BOARD_PAGES } from './board.js';
 import { rgba, mix } from './palette.js';
@@ -49,6 +49,9 @@ export class Office {
     this.syncPets();
     this.avatar = AVATAR.def;        // външният вид на потребителя (портфейлът го сменя)
     this.avatarId = null;            // кой оркестратор го носи: първият дошъл; щом излезе – следващият по ред
+    this.crew = {};                  // save.crew: имената и лицата на колегите (раздел „Екип“)
+    this.crewSeen = {};              // save.crewSeen: кой е идвал (за имената – да не се повтарят)
+    this.crewCheck = 0;
     this.joinSeq = 0;
     this.focusId = null;
     this.seed = 1;
@@ -155,6 +158,60 @@ export class Office {
       a.path = [];
       if (a.mode === 'walk') a.onArrive();
       if (a.loc.type === 'pace') { a.loc.x0 = a.x; }
+    }
+  }
+
+  /** Екипът (save.crew) се смени: пребоядисва колегите, чийто запис е различен. */
+  setCrew(crew, seen) {
+    const old = this.crew;
+    this.crew = crew || {};
+    this.crewSeen = seen || {};
+    for (const a of this.actors.values()) {
+      if (a.id === this.avatarId || !a.crewKey) continue;
+      if (JSON.stringify(old[a.crewKey]?.av) !== JSON.stringify(this.crew[a.crewKey]?.av)) a.setLook(this.lookOf(a));
+    }
+  }
+
+  /** Постоянният колега на агента: проектът за главните, типът за под-агентите (catalog.js crewKey).
+   *  Двама в един проект / от един тип едновременно -> вторият е „#2“ (друг, но също постоянен човек). */
+  assignCrew(a) {
+    const base = crewKey(a.agent);
+    a.crewBase = base;
+    if (!base) { a.crewKey = null; return; }
+    const used = new Set([...this.actors.values()].filter((o) => o !== a && o.crewBase === base).map((o) => o.crewKey));
+    let key = base, n = 1;
+    while (used.has(key)) key = `${base}#${++n}`;
+    a.crewKey = key;
+  }
+
+  /** Външният вид: аватарът ти, иначе колегата от save.crew, иначе случаен, но постоянен по ключа. */
+  lookOf(a) {
+    if (a.id === this.avatarId) return avatarLook(this.avatar, a.id);
+    if (!a.crewKey) return avatarLook(randomAv(a.id), a.id, !!a.agent.subagent);
+    return avatarLook(this.crew[a.crewKey]?.av || randomAv(a.crewKey), a.id, !!a.agent.subagent);
+  }
+  /** Името на колегата по ключ: своето от „Екип“, иначе постоянно (без повторения в целия екип). */
+  nameOf(key) {
+    if (!key) return '';
+    const keys = new Set([...Object.keys(this.crewSeen), ...Object.keys(this.crew)]);
+    for (const a of this.actors.values()) if (a.crewKey) keys.add(a.crewKey);
+    keys.add(key);
+    const sig = [...keys].join('|') + JSON.stringify(this.crew) + LANG;
+    if (sig !== this.namesSig) {
+      this.namesSig = sig;
+      this.names = crewNames([...keys].map((k) => ({ key: k, fem: (this.crew[k]?.av || randomAv(k)).body === 1, name: this.crew[k]?.name })));
+    }
+    return this.names.get(key) || '';
+  }
+
+  /** Етикетът (проектът) или типът може да дойдат малко след влизането – тогава колегата се сменя. */
+  syncCrew(now) {
+    if (now - this.crewCheck < 1000) return;
+    this.crewCheck = now;
+    for (const a of this.actors.values()) {
+      if (crewKey(a.agent) === a.crewBase) continue;
+      this.assignCrew(a);
+      if (a.id !== this.avatarId) a.setLook(this.lookOf(a));
     }
   }
 
@@ -497,6 +554,8 @@ export class Office {
     const a = new Actor(agent, this);
     a.seat = null;
     a.joinSeq = ++this.joinSeq;
+    this.assignCrew(a);
+    a.setLook(this.lookOf(a));
     this.actors.set(agent.id, a);
     this.syncAvatar();
     if (agent.subagent) {
@@ -544,7 +603,7 @@ export class Office {
     let best = null;
     for (const a of this.actors.values()) if (!a.agent.subagent && (!best || a.joinSeq < best.joinSeq)) best = a;
     this.avatarId = best ? best.id : null;
-    if (best) best.setLook(avatarLook(this.avatar, best.id));
+    if (best) best.setLook(this.lookOf(best));
   }
 
   /** Връзка родител -> дете: бюрата са общи, затова детето не се мести (чашата на бюрото сменя цвета сама). */
@@ -750,6 +809,7 @@ export class Office {
   // ================================================================ кадър
   update(dt, now) {
     const L = this.L;
+    this.syncCrew(now);
     while (this.boardFlips.length && this.boardFlips[0] <= now) { this.boardFlips.shift(); this.nextBoard(now); }
     // водещият е отклонен другаде (напр. загуби бюрото си) – кликовете не се губят
     for (const a of this.actors.values()) if (a.boardQueue && a.loc.type !== 'board' && a.pendingLoc?.type !== 'board') { for (; a.boardQueue > 0; a.boardQueue--) this.nextBoard(now); }
@@ -1099,6 +1159,8 @@ export class Office {
     ctx.drawImage(img.front, p.x, p.y);
     // чашата: в цвета на екипа на човека на това бюро (празно бюро – без чаша)
     const who = p.role === 'lead' ? this.actors.get(this.teams[p.team]) : [...this.actors.values()].find((x) => x.pod === p.i);
+    // вещта на бюрото: личната на седящия (раздел „Екип“ / аватар), иначе случайната на бюрото
+    drawDeskItem(ctx, who?.look?.desk || img.item, p.x, p.y);
     if (who) {
       const t = this.leadOf(who)?.seat?.team;
       drawMug(ctx, p.x + DESK_MUG.x, p.y + DESK_MUG.y, t != null ? TEAM_MUGS[t] : NO_TEAM_MUG);

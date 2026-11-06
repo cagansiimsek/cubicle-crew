@@ -4,7 +4,7 @@
 import { PARAMS, T } from './config.js';
 import { prefs } from './prefs.js';
 import { Earner, dayKey } from './rules.js';
-import { resolveDecor, buyItem, equipItem, setAvatar, avatarOf, grantAchievements, setupOffice, setPetName, giveTreat, unlocked } from './catalog.js';
+import { resolveDecor, buyItem, equipItem, setAvatar, avatarOf, grantAchievements, setupOffice, setPetName, giveTreat, unlocked, setCrew, seeCrew, crewKey, setOffice } from './catalog.js';
 
 const SHOW_EVERY_MS = 20000; // най-много едно "+N" на агент за толкова (натрупва се)
 
@@ -52,6 +52,12 @@ export class Tokens {
       this.save.owned = m.owned || []; this.save.equipped = m.equipped; this.save.achievements = m.achievements || {};
       this.save.avatar = m.avatar || null;
       this.office.setAvatar(avatarOf(this.save));
+      // екипът: имената и лицата на колегите + кой е идвал (стар сървър без тях: {} – всички са случайни, но постоянни)
+      this.save.crew = m.crew || {}; this.save.crewSeen = m.crewSeen || {};
+      this.office.setCrew(this.save.crew, this.save.crewSeen);
+      // моят офис: табелата и картините на стената
+      this.save.officeName = m.officeName || ''; this.save.pictures = m.pictures || [];
+      this.office.officeName = this.save.officeName;
       // любимци и началната настройка (стар сървър без тези полета: setup остава undefined = не се показва)
       this.save.petNames = m.petNames || {}; this.save.starter = m.starter; this.save.setup = m.setup;
       this.office.petNames = this.save.petNames;
@@ -83,10 +89,11 @@ export class Tokens {
   /** Обзавеждането от портфейла (или прегледът в магазина) -> стаята; прерисува само при промяна. */
   applyDecor() {
     const eq = this.preview || this.save.equipped || {};
-    const key = JSON.stringify(eq);
+    const pics = this.save.pictures || [];
+    const key = JSON.stringify(eq) + JSON.stringify(pics);
     if (key === this.decorKey) return;
     this.decorKey = key;
-    this.office.setDecor(resolveDecor(eq));
+    this.office.setDecor({ ...resolveDecor(eq), pictures: pics });
   }
   setPreview(eq) { this.preview = eq; this.applyDecor(); }
 
@@ -109,6 +116,8 @@ function serverBackend() {
     buy: (item, slot) => post('api/buy', { item, slot }), equip: (slot, item) => post('api/equip', { slot, item }), avatar: (a) => post('api/avatar', a),
     setup: (d) => post('api/setup', d), pet: (slot, name) => post('api/pet', { slot, name }),
     treat: () => post('api/treat', {}),
+    crew: (body) => post('api/crew', body),
+    office: (body) => post('api/office', body),
   };
 }
 
@@ -121,7 +130,7 @@ export function demoWallet(tokens) {
   const push = (delta, reason, src, by, extra) => tokens.onWallet({
     type: 'wallet', tokens: save.tokens, lifetime: save.lifetimeTokens, delta, reason, src, by,
     owned: save.owned, equipped: save.equipped, achievements: save.achievements, avatar: save.avatar,
-    petNames: save.petNames, starter: save.starter, setup: save.setup,
+    petNames: save.petNames, starter: save.starter, setup: save.setup, crew: save.crew, crewSeen: save.crewSeen, officeName: save.officeName, pictures: save.pictures,
     stats: { tasksDone: save.tasksDone, lifetimeActiveSec: save.lifetimeActiveSec, daysActive: save.daysActive }, ...extra,
   });
   const achievements = () => { for (const a of grantAchievements(save, dayKey())) push(a.reward, 'achievement', null, null, { achievement: a.id }); };
@@ -147,6 +156,14 @@ export function demoWallet(tokens) {
     setup: (d) => act(setupOffice(save, d), 'setup'),
     pet: (slot, name) => act(setPetName(save, slot, name), 'pet'),
     treat: () => act(giveTreat(save), 'treat'),
+    crew: (body) => act(setCrew(save, body), 'crew'),
+    office: (body) => act(setOffice(save, body), 'office'),
   };
-  return (e) => { for (const b of earner.ingest(e, Date.now())) add(b.amount, b.reason, b.src); };
+  return (e) => {
+    if (e.type === 'tool_start' || e.type === 'user_prompt') {
+      const k = crewKey(e);
+      if (k && seeCrew(save, k, e.subagent ? e.atype || e.provider || '' : e.label) === 2) push(0, 'crew');
+    }
+    for (const b of earner.ingest(e, Date.now())) add(b.amount, b.reason, b.src);
+  };
 }
