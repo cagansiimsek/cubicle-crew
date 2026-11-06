@@ -30,6 +30,9 @@
   .tag[data-state="waiting"] { background: #e04a6b; border-color: #ff9ab0; animation: pulse 0.64s steps(2) infinite; }
   .tag[data-state="waiting"] .s { color: #fff; font-weight: 600; }
   .tag.focus { outline: 2px solid #fff; }
+  /* свит етикет (застъпваше по-важен) – само цветната точка; пълният – при посочване */
+  .tag.mini { padding: 2px; gap: 0; }
+  .tag.mini .n, .tag.mini .s { display: none; }
 
   /* балонче над главата */
   .bubble { position: absolute; left: 0; top: 0; max-width: var(--bubble-max); padding: 2px 7px 3px; border-radius: 3px;
@@ -88,7 +91,12 @@
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 5px; }
 
   #empty { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--ui-bg); border: 1px solid var(--ui-border);
-    padding: 8px 14px; border-radius: 4px; font-size: 14px; pointer-events: none; box-shadow: 3px 3px 0 rgba(0,0,0,.35); }
+    padding: 8px 14px; border-radius: 4px; font-size: 14px; pointer-events: none; box-shadow: 3px 3px 0 rgba(0,0,0,.35);
+    display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; max-width: min(420px, calc(100vw - 32px)); }
+  #empty[hidden] { display: none; }
+  #empty span { color: var(--ui-dim); font-size: 12px; line-height: 1.35; }
+  #empty a { pointer-events: auto; color: #e0c24a; font-size: 12px; }
+  body.desktop #empty span { font-size: 11px; }
   #debug { position: fixed; right: 8px; bottom: 44px; max-width: 560px; background: rgba(0,0,0,.8); color: #9fe0a0; font: 11px/1.3 var(--mono);
     padding: 6px 8px; border-radius: 3px; pointer-events: none; z-index: 6; }
   #debug pre { margin: 4px 0 0; white-space: pre; overflow: hidden; }

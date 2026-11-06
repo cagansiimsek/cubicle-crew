@@ -1,6 +1,6 @@
 // Целият текст е DOM (остър при всякакъв мащаб и с кирилица): етикети, балончета,
 // подсказки при посочване, HUD, легенда и ?debug панел.
-import { CFG, STATES, STATE_ORDER, PROVIDERS, T, PARAMS, LANG, setLang, itemName, petTitle } from './config.js';
+import { CFG, STATES, STATE_ORDER, PROVIDERS, TOOL_STATE, T, PARAMS, LANG, setLang, itemName, petTitle } from './config.js';
 import { shortDetail, fmtDuration, danger, fmtUsd, shortModel } from './util.js';
 import { coinUrl } from './tokens.js';
 import { soundOn, setSound, sfx, audioPrefs, toggleMute } from './sound.js';
@@ -387,37 +387,34 @@ export class UI {
         it.label.dataset.state = st;
         it.bubble.dataset.state = st;
       });
+      // свит етикет се мери в пълния си вид (иначе ширината остава тази на точката)
+      if (!it.lw && it.mini) { it.mini = false; it.label.classList.remove('mini'); }
       const lx = this.clampX(anc.label.x, it, 'lw', it.label);
       // на дивана и при кафето/водата двама стоят близо – етикетът на втория е ред по-долу, за да не се застъпват
       const ly = this.px(anc.label.y) + (a.mode !== 'walk' && (a.loc.type === 'sofa' || a.loc.type === 'cooler') ? (a.loc.type === 'sofa' ? a.loc.i : 1) * (it.lh ||= (it.label.offsetHeight || 14) + 2) : 0);
       const mid = !!anc.label.mid;
-      const dim = !hidden && this.labelCovers(a, it, lx, mid ? ly - (it.lhh ||= it.label.offsetHeight || 14) / 2 : ly);
-      this.set(it, 'lpos', `${lx},${ly},${mid},${dim},${Math.round(a.alpha * 10)}`, () => {
-        it.label.style.transform = `translate(${lx}px, ${ly}px) translate(-50%, ${mid ? '-50%' : '0'})`;
-        it.label.style.opacity = hidden ? 0 : Math.min(1, a.alpha * 1.2) * (dim ? 0.35 : 1);
-        it.bubble.style.visibility = hidden ? 'hidden' : '';
-      });
+      it.lhh ||= it.label.offsetHeight || 14;
       // балонче: инструмент + детайл (само за "работни" състояния)
       const tool = this.model.currentTool(ag);
       let btxt = null;
       if (tool && (st === 'typing' || st === 'reading' || st === 'running' || st === 'delegating')) btxt = [tool.tool, prefs.private ? '' : shortDetail(tool.detail, 38), danger(tool.tool, tool.detail)];
       if (ag.crashed && !ag.crashSeen) btxt = [T.crashed.title, T.crashed.hint];
-      else if (st === 'waiting') btxt = [T.needsYou, ag.ask ? T.allow(ag.ask.kind === 'permission' && tool ? tool.tool : '') : tool ? tool.tool : ''];
+      else if (st === 'waiting') btxt = this.waitText(ag, now);
       const bkey = btxt ? btxt.join('|') : '';
       this.set(it, 'btxt', bkey, () => {
-        if (btxt) { it.bubble.children[0].textContent = btxt[0]; it.bubble.children[1].textContent = btxt[1]; it.bw = 0; }
+        if (btxt) { it.bubble.children[0].textContent = btxt[0]; it.bubble.children[1].textContent = btxt[1]; it.bw = 0; it.bh = 0; }
         it.bubble.classList.toggle('show', !!btxt);
         it.bubble.classList.toggle('danger', !!btxt?.[2]);
       });
-      const by = anc.bubble.y - (st === 'waiting' ? 18 : 0);
+      const by = this.px(anc.bubble.y - (st === 'waiting' ? 18 : 0));
       const bx = this.clampX(anc.bubble.x, it, 'bw', it.bubble);
-      this.set(it, 'bpos', `${bx},${this.px(by)}`, () => {
-        it.bubble.style.transform = `translate(${bx}px, ${this.px(by)}px) translate(-50%, -100%)`;
-      });
+      if (btxt) it.bh ||= it.bubble.offsetHeight || 19;
+      it.lay = { a, hidden, lx, ly, mid, bx, by, hasB: !!btxt };
       it.label.classList.toggle('focus', office.focusId === a.id);
       it.bubble.classList.toggle('hl', office.focusId === a.id || this.hoverId === a.id);
     }
     for (const [id, it] of this.items) if (!seen.has(id)) { it.label.remove(); it.bubble.remove(); this.items.delete(id); }
+    this.layoutTags();
 
     this.updateTooltip(now);
     if (office.focusId) this.updateCard(now);
@@ -430,6 +427,69 @@ export class UI {
     if (!it[key]) it[key] = elm.offsetWidth || 0;
     const half = it[key] / 2 + 2, W = this.overlay.clientWidth;
     return Math.round(Math.max(half, Math.min(W - half, this.px(x))) * this.dpr) / this.dpr;
+  }
+
+  /** Червеното балонче: защо чака (с думи, не с името на инструмента) и откога – след първата минута. */
+  waitText(ag, now) {
+    let ask = null; // висящ инструмент „чака теб“ (въпрос / план) – той казва защо
+    for (const p of ag.pending.values()) if (TOOL_STATE[p.tool] === 'waiting') ask = p.tool;
+    const tool = this.model.currentTool(ag);
+    const why = ask === 'AskUserQuestion' ? T.waitWhy.question
+      : ask === 'ExitPlanMode' ? T.waitWhy.plan
+      : ask ? T.allow('')
+      : T.allow(ag.ask?.kind === 'permission' && tool ? tool.tool : '');
+    const min = ag.state === 'waiting' && ag.stateSince ? Math.floor((now - ag.stateSince) / 60000) : 0;
+    return [min > 0 ? `${T.needsYou} · ${T.waitWhy.since(min)}` : T.needsYou, why];
+  }
+
+  /** Етикети и балончета без застъпване. По важност (чака > фокус/посочен > прекъснат > водач > под-агент,
+   *  вървящият – по-назад): всеки опитва мястото си, после ред по-долу; ако пак застъпва – свива се до
+   *  цветната точка (пълният се вижда при посочване). Балонче, което застъпва по-важно, се скрива. */
+  layoutTags() {
+    const office = this.office, cs = this.cssScale || 1, m = this.mouse;
+    const list = [...this.items.values()].filter((it) => it.lay);
+    const prio = (it) => {
+      const a = it.lay.a, ag = a.agent;
+      if (office.focusId === a.id || this.hoverId === a.id || it.under) return 6;
+      return (a.vstate === 'waiting' ? 5 : ag.crashed && !ag.crashSeen ? 4 : ag.subagent ? 2 : 3) - (a.mode === 'walk' ? 0.5 : 0);
+    };
+    for (const it of list) { // мишката върху (пълния) етикет – той печели
+      const L = it.lay, top = L.mid ? L.ly - it.lhh / 2 : L.ly, w = it.lw || 0;
+      it.under = !!m && !L.hidden && m.x * cs >= L.lx - w / 2 && m.x * cs <= L.lx + w / 2 && m.y * cs >= top && m.y * cs <= top + it.lhh;
+      it.pr = prio(it);
+    }
+    list.sort((p, q) => q.pr - p.pr);
+    const boxes = [];
+    const free = (x0, y0, x1, y1) => !boxes.some((b) => Math.min(x1, b[2]) - Math.max(x0, b[0]) > 1 && Math.min(y1, b[3]) - Math.max(y0, b[1]) > 1);
+    for (const it of list) {
+      const L = it.lay, a = L.a, strong = it.pr >= 5;
+      // балонче над главата
+      let tuck = false;
+      if (L.hasB && !L.hidden) {
+        const x0 = L.bx - (it.bw || 0) / 2, y0 = L.by - (it.bh || 19);
+        tuck = !strong && !free(x0, y0, x0 + (it.bw || 0), L.by);
+        if (!tuck) boxes.push([x0, y0, x0 + (it.bw || 0), L.by]);
+      }
+      // етикет
+      const w = it.lw || 0, h = it.lhh, top0 = L.mid ? L.ly - h / 2 : L.ly;
+      let dy = 0, mini = false;
+      if (!L.hidden) {
+        const fits = (d) => free(L.lx - w / 2, top0 + d, L.lx + w / 2, top0 + d + h);
+        if (!strong && !fits(0)) { if (fits(h + 1)) dy = h + 1; else mini = true; }
+        boxes.push(mini ? [L.lx - 6, top0, L.lx + 6, top0 + h] : [L.lx - w / 2, top0 + dy, L.lx + w / 2, top0 + dy + h]);
+      }
+      if (mini !== !!it.mini) { it.mini = mini; it.label.classList.toggle('mini', mini); }
+      const ly = L.ly + dy;
+      const dim = !L.hidden && !mini && this.labelCovers(a, it, L.lx, top0 + dy);
+      this.set(it, 'lpos', `${L.lx},${ly},${L.mid},${dim},${Math.round(a.alpha * 10)}`, () => {
+        it.label.style.transform = `translate(${L.lx}px, ${ly}px) translate(-50%, ${L.mid ? '-50%' : '0'})`;
+        it.label.style.opacity = L.hidden ? 0 : Math.min(1, a.alpha * 1.2) * (dim ? 0.35 : 1);
+      });
+      this.set(it, 'bpos', `${L.bx},${L.by},${L.hidden || tuck}`, () => {
+        it.bubble.style.transform = `translate(${L.bx}px, ${L.by}px) translate(-50%, -100%)`;
+        it.bubble.style.visibility = L.hidden || tuck ? 'hidden' : '';
+      });
+    }
   }
 
   /** Етикетът закрива ли друг герой или любимец? Тогава избледнява – освен при "чака", фокус,
@@ -570,7 +630,11 @@ export class UI {
     const title = s.waiting ? `(${s.waiting}) ${T.needsYou} · ${T.title}` : T.title;
     if (document.title !== title) document.title = title;
     this.empty.hidden = !(s.agents === 0 && this.conn !== 'demo');
-    if (this.empty.textContent !== T.waitingActivity) this.empty.textContent = T.waitingActivity;
+    // празен офис: какво да направиш, за да дойде някой (+ демо в браузъра, докато чакаш)
+    const E = T.emptyOffice;
+    const ehtml = `<b>${E.title}</b>` + (PARAMS.lan ? '' : `<span>${E.hint}</span>`) +
+      (this.bridge || PARAMS.lan ? '' : `<a href="?demo${LANG === 'bg' ? '&lang=bg' : '&lang=en'}">${E.demo}</a>`);
+    if (this.empty._html !== ehtml) { this.empty.innerHTML = ehtml; this.empty._html = ehtml; }
     if (PARAMS.debug) this.updateDebug(now);
     this.sendDesktopStats(s);
   }

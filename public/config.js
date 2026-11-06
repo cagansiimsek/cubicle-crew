@@ -83,6 +83,8 @@ const T_BG = {
   crashed: { title: 'Сесията прекъсна', hint: 'насред работа' },
   needsYou: 'Чака теб!',
   allow: (tool) => (tool ? `Разреши ли ${tool}?` : 'Отговори в терминала'),
+  waitWhy: { question: 'Има въпрос към теб', plan: 'Планът е готов – одобряваш ли?', since: (m) => (m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч ${m % 60} мин`) },
+  emptyOffice: { title: 'Офисът е празен', hint: 'Пусни Claude Code, Codex, Gemini CLI или OpenCode в терминал – агентите влизат през вратата, щом започнат.', demo: 'Виж демо, докато чакаш' },
   danger: 'Рискова команда',
   perm: { allow: 'Разреши', deny: 'Откажи', more: (n) => `още ${n}`, keys: 'Y / N', global: 'или Ctrl+Alt+Y / N отвсякъде' },
   // клик по предметите в офиса (poke.js) – подсказката при посочване
@@ -426,6 +428,8 @@ const T_EN = {
   crashed: { title: 'Session ended', hint: 'in the middle of the work' },
   needsYou: 'Needs you!',
   allow: (tool) => (tool ? `Allow ${tool}?` : 'Answer in the terminal'),
+  waitWhy: { question: 'Has a question for you', plan: 'Plan ready – approve?', since: (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`) },
+  emptyOffice: { title: 'The office is empty', hint: 'Start Claude Code, Codex, Gemini CLI or OpenCode in a terminal – your agents walk in through the door as soon as they start.', demo: 'Watch a demo while you wait' },
   danger: 'Risky command',
   perm: { allow: 'Allow', deny: 'Deny', more: (n) => `${n} more`, keys: 'Y / N', global: 'or Ctrl+Alt+Y / N from anywhere' },
   // clicking props in the office (poke.js) – hover hint
