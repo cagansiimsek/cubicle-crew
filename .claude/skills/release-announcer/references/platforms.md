@@ -9,6 +9,14 @@ stop and report when something doesn't match instead of clicking around blindly.
 - Length: up to ~3,000 characters; only the first ~2–3 lines show before "…see more",
   so the hook goes first.
 - Media: image, GIF or video via the media button in the composer.
+  - Checked 2026-11-06 in Claude in Chrome: text goes in with a synthetic `ClipboardEvent('paste')` carrying
+    `text/html` (`<p>…</p>`, `<p><br></p>` for blank lines) into `.tiptap.ProseMirror`.
+  - Images can NOT be attached by automation: a pasted/dropped File, a real Ctrl+V of an OS-clipboard image and
+    `upload_image` drag & drop are all ignored; there is no `input[type=file]` until the media button is clicked,
+    and that opens the native picker. Fetching a local image from the page fails (CSP).
+  - While a link preview card is shown the media buttons are hidden – remove the card (its ✕) first.
+  - So: fill the text, remove the link card, put the image path on the clipboard (`Set-Clipboard`) and ask the
+    user to click the image icon, paste the path into the picker, then Post.
 - Scheduling: the composer has a clock icon next to Post. Set date/time there, then the
   button becomes "Schedule". Only click it in `schedule` mode after approval.
 - Draft mode: leave the composer open and filled. Don't close the dialog — LinkedIn may
