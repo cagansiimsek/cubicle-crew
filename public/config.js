@@ -280,6 +280,11 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.21.0': [
+        ['Имената не се трупат', 'Когато много агенти са близо един до друг, етикетите им се разминават: по-маловажният слиза ред по-долу или остава само цветната точка (посочи я и името се вижда). Балонче, което закрива по-важно, се скрива. Червеното „Чака теб“ винаги остава отгоре.'],
+        ['„Чака теб“ казва защо и откога', 'Вместо името на инструмента пише „Има въпрос към теб“ или „Планът е готов – одобряваш ли?“, а след първата минута – и колко време чака: „Чака теб! · 3 мин“.'],
+        ['Празният офис подсказва', 'Докато няма никого, офисът казва какво да пуснеш (Claude Code, Codex, Gemini CLI, OpenCode), а в браузъра има и линк към демото.'],
+      ],
       '2.20.1': [
         ['Въпросите към теб се виждат', 'Когато главният агент те пита нещо (AskUserQuestion), докато негов под-агент още работи, сега той светва в червено и чака теб. Досега „чакането“ отиваше при под-агента и изчезваше при следващата му стъпка – главният стоеше като без работа.'],
       ],
@@ -621,6 +626,11 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.21.0': [
+        ['Names don\'t pile up', 'When many agents are close together, their labels make room: the less important one moves a row down or shrinks to its colour dot (point at it to see the name). A bubble that covers a more important one hides. The red "Needs you" always stays on top.'],
+        ['"Needs you" says why and for how long', 'Instead of the tool name it says "Has a question for you" or "Plan ready – approve?", and after the first minute how long it has been waiting: "Needs you! · 3 min".'],
+        ['The empty office helps', 'While nobody is in, the office says what to start (Claude Code, Codex, Gemini CLI, OpenCode), and in the browser it links to the demo.'],
+      ],
       '2.20.1': [
         ['Questions to you show up', 'When the main agent asks you something (AskUserQuestion) while one of its sub-agents is still working, it now turns red and waits for you. Before, the "waiting" went to the sub-agent and vanished at its next step – the main agent looked idle.'],
       ],
