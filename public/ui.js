@@ -472,18 +472,21 @@ export class UI {
       }
       // етикет
       const w = it.lw || 0, h = it.lhh, top0 = L.mid ? L.ly - h / 2 : L.ly;
-      let dy = 0, mini = false;
+      let dy = 0, mini = false, gone = false;
       if (!L.hidden) {
-        const fits = (d) => free(L.lx - w / 2, top0 + d, L.lx + w / 2, top0 + d + h);
-        if (!strong && !fits(0)) { if (fits(h + 1)) dy = h + 1; else mini = true; }
-        boxes.push(mini ? [L.lx - 6, top0, L.lx + 6, top0 + h] : [L.lx - w / 2, top0 + dy, L.lx + w / 2, top0 + dy + h]);
+        const fits = (d, hw = w / 2) => free(L.lx - hw, top0 + d, L.lx + hw, top0 + d + h);
+        if (!strong && !fits(0)) {
+          if (fits(h + 1)) dy = h + 1;
+          else { mini = true; if (!fits(0, 6)) { if (fits(h + 1, 6)) dy = h + 1; else gone = true; } } // и точката няма къде – скрит
+        }
+        if (!gone) boxes.push(mini ? [L.lx - 6, top0 + dy, L.lx + 6, top0 + dy + h] : [L.lx - w / 2, top0 + dy, L.lx + w / 2, top0 + dy + h]);
       }
       if (mini !== !!it.mini) { it.mini = mini; it.label.classList.toggle('mini', mini); }
       const ly = L.ly + dy;
       const dim = !L.hidden && !mini && this.labelCovers(a, it, L.lx, top0 + dy);
-      this.set(it, 'lpos', `${L.lx},${ly},${L.mid},${dim},${Math.round(a.alpha * 10)}`, () => {
+      this.set(it, 'lpos', `${L.lx},${ly},${L.mid},${dim},${gone},${Math.round(a.alpha * 10)}`, () => {
         it.label.style.transform = `translate(${L.lx}px, ${ly}px) translate(-50%, ${L.mid ? '-50%' : '0'})`;
-        it.label.style.opacity = L.hidden ? 0 : Math.min(1, a.alpha * 1.2) * (dim ? 0.35 : 1);
+        it.label.style.opacity = L.hidden || gone ? 0 : Math.min(1, a.alpha * 1.2) * (dim ? 0.35 : 1);
       });
       this.set(it, 'bpos', `${L.bx},${L.by},${L.hidden || tuck}`, () => {
         it.bubble.style.transform = `translate(${L.bx}px, ${L.by}px) translate(-50%, -100%)`;
