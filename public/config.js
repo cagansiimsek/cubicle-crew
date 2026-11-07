@@ -311,6 +311,7 @@ const T_BG = {
         ['Твоят екип', 'Всеки проект вече си има свой човек, а всеки вид помощник (Explore, Plan, твоите собствени агенти) – също. Идват всеки път с едно и също лице и име. В новия раздел „Екип“ в магазина ги преименуваш и обличаш както искаш.'],
         ['Повече за аватара', 'Нови прически, брада и мустаци, шапка с козирка, плетена шапка или слушалки, къс ръкав, цвят на панталона, обувките и очите – и лична вещ на бюрото (снимка, кактус, патенце, глобус…). Същото важи и за колегите.'],
         ['Моят офис', 'Раздел „Декор“: име на офиса на месингова табела над дъската и до три твои картини на стената на мястото на постерите. Снимката става на пиксели на твоя компютър – никъде не се качва.'],
+        ['Без призрачни сесии', 'Сесия, затворена заедно с IDE-то (WebStorm, VS Code…) или при спрян ток, вече не остава в офиса след рестарт на компютъра. Windows понякога дава номера на стария процес на друга програма и офисът я мислеше за жива.'],
       ],
       '2.21.1': [['Точките не застъпват имена', 'Свитата до цветна точка табелка вече не ляга върху името на друг агент – ако няма място и за точката, се скрива (посочи агента и се вижда).']],
       '2.21.0': [
@@ -690,6 +691,7 @@ const T_EN = {
         ['Your crew', 'Every project now has its own person, and so does every kind of helper (Explore, Plan, your own agents). They come back with the same face and name every time. Rename them and dress them up in the new Crew tab of the shop.'],
         ['More for your avatar', 'New hairstyles, beards and moustaches, a cap, a beanie or headphones, short sleeves, trouser, shoe and eye colours – and a keepsake on your desk (a photo, a cactus, a rubber duck, a globe…). Your colleagues get all of it too.'],
         ['My office', 'Decor tab: your office name on a brass plaque above the whiteboard, and up to three of your own pictures on the wall instead of the posters. The photo is turned into pixels on your computer – it is not uploaded anywhere.'],
+        ['No ghost sessions', 'A session closed together with its IDE (WebStorm, VS Code…) or by a power cut no longer stays in the office after a restart. Windows sometimes gives the old process number to another program, and the office thought it was still alive.'],
       ],
       '2.21.1': [['Dots stay off names', 'A label shrunk to its colour dot no longer lands on another agent\'s name – if there is no room even for the dot, it hides (point at the agent to see it).']],
       '2.21.0': [
