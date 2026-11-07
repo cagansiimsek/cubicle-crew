@@ -7,8 +7,9 @@ import { R, rng, makeCanvas, pixLine, hashStr } from './util.js';
 import { POD } from './layout.js';
 import { drawText, textWidth, compactNum } from './pixelfont.js';
 import { drawCoin } from './tokens.js';
-import { SLOTS, PET_SLOTS, resolveDecor } from './catalog.js';
+import { SLOTS, PET_SLOTS, PIC_SLOTS, resolveDecor } from './catalog.js';
 import { drawWindowWeather, drawWeatherPlaque, plaqueWidth } from './weather.js';
+import { WALL_SIGN, drawWallSign } from './wall-sign.js';
 
 // =====================================================================
 // Обзавеждане (decor): предметите от catalog.js -> цветове/стилове за рисуване
@@ -1141,22 +1142,41 @@ export function buildRoom(L, seed = 1, decor = DEFAULT_DECOR) {
     board = { x: cursor, y: 9, w: 68, h: 30 };
     cursor += board.w + 8;
   }
+  const wallSign = decor.wallSign ? { x: cursor, y: 5, w: WALL_SIGN.w, h: WALL_SIGN.h } : null;
+  if (wallSign) cursor += wallSign.w + 8;
   const windows = [];
   const posters = [];
   const WW = 34, WY = 5, WHH = WH - 11, GAP = 10; // френски прозорци: от тавана до прага над первазa на пода
   const span = ax1 - 6 - cursor - (lo.darts.w + 10); // място за дъската за дартс
-  const nWin = Math.max(1, Math.floor((span + GAP) / (WW + GAP)));
+  // When a sign shares the wall with photos, prefer usable photo gaps over extra windows.
+  const photoGaps = wallSign && decor.pictures?.slice(1).some(Boolean);
+  const minGap = photoGaps ? 22 : GAP;
+  const nWin = Math.max(1, Math.floor((span + minGap) / (WW + minGap)));
   const free = span - nWin * WW;
   const gap = nWin > 1 ? free / (nWin - 1) : 0;
   for (let i = 0; i < nWin; i++) {
     const x = Math.round(nWin > 1 ? cursor + i * (WW + gap) : cursor + free / 2);
     windows.push({ x, y: WY, w: WW, h: WHH });
-    if (i < nWin - 1 && gap >= 22 && i % 2 === 0) posters.push({ x: Math.round(x + WW + gap / 2 - 8), y: 12, kind: decor.posters.kinds[posters.length % 3] });
+    if (i < nWin - 1 && gap >= 22 && (i % 2 === 0 || (photoGaps && i < PIC_SLOTS - 1))) {
+      posters.push({ x: Math.round(x + WW + gap / 2 - 8), y: 12, kind: decor.posters.kinds[posters.length % 3] });
+    }
   }
   for (const w of windows) drawWindowFrame(g, w.x, w.y, w.w, w.h);
   // твоите картини (save.pictures): 0 = над диспенсъра, 1.. = постерите между прозорците
   posters.forEach((p, i) => { const pic = decor.pictures?.[i + 1]; if (pic) drawPicture(g, p.x, p.y, pic); else drawPoster(g, p.x, p.y, p.kind); });
   if (board) drawWhiteboardFrame(g, board);
+  if (wallSign) {
+    drawWallSign(g, wallSign.x, wallSign.y, decor.wallSign);
+    // Keep each saved slot visible even when its between-window gap does not fit.
+    for (let i = posters.length + 1; i < PIC_SLOTS; i++) {
+      const picture = decor.pictures?.[i];
+      if (!picture) continue;
+      const frame = makeCanvas(16, 20);
+      drawPicture(frame.getContext('2d'), 0, 0, picture);
+      g.imageSmoothingEnabled = false;
+      g.drawImage(frame, wallSign.x + 21 * i, wallSign.y + wallSign.h + 1, 13, 16);
+    }
+  }
   const dt = lo.darts;
   const dartImg = prop('dartboard', dt.w, dt.h, (c) => drawDartboard(c, dt.w, dt.h));
   g.drawImage(dartImg, dt.x, dt.y);
@@ -1292,7 +1312,7 @@ export function buildRoom(L, seed = 1, decor = DEFAULT_DECOR) {
   const lampSwitch = { x: lightSwitch.x, y: lightSwitch.y + lightSwitch.h + 2, w: 5, h: 7 };
 
   return {
-    W, H, bg, objects, windows, posters, board, clock, digital, door: L.door, layout: L, ceil, lightSwitch, lampSwitch,
+    W, H, bg, objects, windows, posters, board, wallSign, clock, digital, door: L.door, layout: L, ceil, lightSwitch, lampSwitch,
     sky: { x0: skyX0, x1: skyX1, stars, clouds, skyline, view, k },
     lampGlow, aquarium, arcade, massage, season, shredder, fountain,
     // сиянието на неона: където е табелата (на прозрачния фон – до часовника)

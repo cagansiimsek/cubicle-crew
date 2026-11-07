@@ -242,6 +242,13 @@ const T_BG = {
     mine: {
       title: 'Моят офис', name: 'Име на офиса', namePh: 'напр. Нощните сови ООД', save: 'Запази',
       nameHint: 'Стои на месингова табела над дъската.',
+      sign: {
+        heading: 'Собствена табела', show: 'Покажи собствената табела', title: 'Заглавие', subtitle: 'Подзаглавие',
+        exampleTitle: 'ТВОЯТ ОФИС', exampleSubtitle: 'ТЕКСТ ПО ИЗБОР',
+        titleColor: 'Цвят на заглавието', subtitleColor: 'Цвят на подзаглавието', preview: 'Преглед на табелата',
+        invalid: 'Въведи заглавие за видимата табела и избери валидни цветове.',
+        photoHint: 'При тясна стена картините без място между прозорците стоят под табелата.',
+      },
       pics: 'Твои картини', where: ['До диспенсъра', 'Между прозорците', 'Между прозорците (2)'],
       choose: 'Избери снимка…', remove: 'Махни', busy: 'Рисувам…',
       picHint: 'Снимката става на пиксели тук, на компютъра ти – никъде не се качва. Ако стаята е тясна и на това място няма постер, картината не се вижда.',
@@ -623,6 +630,13 @@ const T_EN = {
     mine: {
       title: 'My office', name: 'Office name', namePh: 'e.g. Night Owls Ltd.', save: 'Save',
       nameHint: 'Shown on a brass plaque above the whiteboard.',
+      sign: {
+        heading: 'Custom wall sign', show: 'Show custom sign', title: 'Title', subtitle: 'Subtitle',
+        exampleTitle: 'YOUR OFFICE', exampleSubtitle: 'YOUR SUBTITLE HERE',
+        titleColor: 'Title color', subtitleColor: 'Subtitle color', preview: 'Sign preview',
+        invalid: 'Enter a title for the visible sign and choose valid colors.',
+        photoHint: 'On narrow walls, pictures without a window gap hang below the sign.',
+      },
       pics: 'Your pictures', where: ['By the water cooler', 'Between the windows', 'Between the windows (2)'],
       choose: 'Choose a picture…', remove: 'Remove', busy: 'Drawing…',
       picHint: 'The picture is turned into pixels right here on your computer – it is not uploaded anywhere. If the room is narrow and has no poster at that spot, the picture is not shown.',

@@ -1,6 +1,7 @@
 // Сцената: подредба, мебели, герои, маршрути, рисуване по слоеве.
 import { CFG, STATES, PARAMS, LANG, crewNames } from './config.js';
 import { computeLayout, POD } from './layout.js';
+import { WALL_SIGN } from './wall-sign.js';
 import { buildRoom, buildPod, drawDeskItem, drawClearFloor, drawClearDynamic, drawSky, drawWallDynamic, vignette, drawLightFixtures, lightGlows, glow, glowE, drawAquariumFish, drawArcadeScreen, drawMassageLed, drawFountainWater, drawMug, DESK_MUG, drawShredderChew } from './environment.js';
 import { flashAt } from './weather.js';
 import { gradeOf, applyGrade, lightCanvas, sunPatches, drawSunPatches, drawSunBeams, beamPoint, drawWetReflections } from './light.js';
@@ -146,7 +147,7 @@ export class Office {
   }
 
   relayout() {
-    this.L = computeLayout(this.dev.w, this.dev.h);
+    this.L = computeLayout(this.dev.w, this.dev.h, this.decor.wallSign ? WALL_SIGN.minRoomWidth : 0);
     this.room = buildRoom(this.L, this.seed, this.decor);
     this.podImgs = this.L.pods.map((p) => buildPod(hashStr(`pod${p.team}${p.role}${p.slot}`) ^ this.seed, p.role === 'lead', this.decor, p.team));
     this.layoutVersion++;

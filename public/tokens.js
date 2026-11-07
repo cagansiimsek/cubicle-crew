@@ -3,6 +3,7 @@
 // и пращаме покупките (POST /api/buy, /api/equip). В демото същите правила работят в паметта.
 import { PARAMS, T } from './config.js';
 import { prefs } from './prefs.js';
+import { cleanWallSign } from './wall-sign.js';
 import { Earner, dayKey } from './rules.js';
 import { resolveDecor, buyItem, equipItem, setAvatar, avatarOf, grantAchievements, setupOffice, setPetName, giveTreat, unlocked, setCrew, seeCrew, crewKey, setOffice } from './catalog.js';
 
@@ -57,6 +58,7 @@ export class Tokens {
       this.office.setCrew(this.save.crew, this.save.crewSeen, this.save.crewMe);
       // моят офис: табелата и картините на стената
       this.save.officeName = m.officeName || ''; this.save.pictures = m.pictures || [];
+      this.save.wallSign = cleanWallSign(m.wallSign);
       this.office.officeName = this.save.officeName;
       // любимци и началната настройка (стар сървър без тези полета: setup остава undefined = не се показва)
       this.save.petNames = m.petNames || {}; this.save.starter = m.starter; this.save.setup = m.setup;
@@ -90,10 +92,12 @@ export class Tokens {
   applyDecor() {
     const eq = this.preview || this.save.equipped || {};
     const pics = this.save.pictures || [];
-    const key = JSON.stringify(eq) + JSON.stringify(pics);
+    const sign = this.save.wallSign;
+    const wallSign = sign?.enabled && !PARAMS.clear && !PARAMS.overlay ? sign : null;
+    const key = JSON.stringify([eq, pics, wallSign]);
     if (key === this.decorKey) return;
     this.decorKey = key;
-    this.office.setDecor({ ...resolveDecor(eq), pictures: pics });
+    this.office.setDecor({ ...resolveDecor(eq), pictures: pics, wallSign });
   }
   setPreview(eq) { this.preview = eq; this.applyDecor(); }
 
@@ -130,7 +134,7 @@ export function demoWallet(tokens) {
   const push = (delta, reason, src, by, extra) => tokens.onWallet({
     type: 'wallet', tokens: save.tokens, lifetime: save.lifetimeTokens, delta, reason, src, by,
     owned: save.owned, equipped: save.equipped, achievements: save.achievements, avatar: save.avatar,
-    petNames: save.petNames, starter: save.starter, setup: save.setup, crew: save.crew, crewSeen: save.crewSeen, crewMe: save.crewMe, officeName: save.officeName, pictures: save.pictures,
+    petNames: save.petNames, starter: save.starter, setup: save.setup, crew: save.crew, crewSeen: save.crewSeen, crewMe: save.crewMe, officeName: save.officeName, pictures: save.pictures, wallSign: save.wallSign,
     stats: { tasksDone: save.tasksDone, lifetimeActiveSec: save.lifetimeActiveSec, daysActive: save.daysActive }, ...extra,
   });
   const achievements = () => { for (const a of grantAchievements(save, dayKey())) push(a.reward, 'achievement', null, null, { achievement: a.id }); };

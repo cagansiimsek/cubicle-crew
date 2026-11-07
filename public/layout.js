@@ -22,9 +22,9 @@ export const POD = {
 
 /** Колко място иска стаята (логически px). Подредбата е постоянна: горе бюрата на двата оркестратора
  *  с принтера между тях, отдолу един ред с SUB_PER_ROW общи бюра за под-агентите. Нищо не се появява. */
-export function teamNeed(podH = CFG.POD_H) {
+export function teamNeed(podH = CFG.POD_H, minWidth = 0) {
   return {
-    w: Math.max(CFG.MIN_W, CFG.MARGIN_L + CFG.SUB_PER_ROW * CFG.POD_W + CFG.LOUNGE_W + CFG.MARGIN_R),
+    w: Math.max(minWidth, CFG.MIN_W, CFG.MARGIN_L + CFG.SUB_PER_ROW * CFG.POD_W + CFG.LOUNGE_W + CFG.MARGIN_R),
     // ROW_STEP: долният ред е по-близо от височината на едно място – бюрата се застъпват
     h: Math.max(CFG.MIN_H, CFG.WALL_H + CFG.TOP_GAP + (CFG.ROW_STEP ?? podH) + podH + CFG.MARGIN_B),
   };
@@ -36,11 +36,11 @@ export function teamNeed(podH = CFG.POD_H) {
  * devW/devH – размер на прозореца във ФИЗИЧЕСКИ пиксели.
  * Връща логическия размер на стаята, мащаба (цяло число) и позициите на всичко.
  */
-export function computeLayout(devW, devH) {
+export function computeLayout(devW, devH, minWidth = 0) {
   let best = null;
   // втори вариант с по-гъсти редове – за малки прозорци (печели само ако дава по-голям мащаб)
   for (const podH of [CFG.POD_H, CFG.POD_H_COMPACT]) {
-    const need = teamNeed(podH);
+    const need = teamNeed(podH, minWidth);
     const scale = Math.max(1, Math.min(CFG.MAX_SCALE, Math.floor(Math.min(devW / need.w, devH / need.h))));
     const score = scale * 1000 - (podH < CFG.POD_H ? 500 : 0);
     if (!best || score > best.score) best = { scale, score, needW: need.w, needH: need.h, podH };
@@ -142,7 +142,7 @@ export function computeLayout(devW, devH) {
 
   return {
     scale, W, H, cols, rows, pods, teams, rugs, rowYs, lounge, door, podH,
-    need: teamNeed(), cap: pods.length,
+    need: teamNeed(CFG.POD_H, minWidth), cap: pods.length,
     deskArea: { x0: ax0, x1: ax1, y0: ay0, y1: ay1 },
     leftLaneX: Math.round(ox) - 4, // лявата вертикална пътека – до първата колона бюра
   };

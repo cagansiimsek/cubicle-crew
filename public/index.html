@@ -215,6 +215,14 @@
   .shop-panel .crew > button.meon { background: #e0c24a; color: #1d1626; border-color: #e0c24a; }
   /* „Моят офис“: табела + твои картини */
   .shop-panel .mine .pics { display: flex; flex-wrap: wrap; gap: 8px; }
+  .shop-panel .wall-sign-editor { padding: 8px; margin: 8px 0; border: 1px solid #3a3452; border-radius: 4px; }
+  .shop-panel .wall-sign-editor summary { cursor: pointer; }
+  .shop-panel .wall-sign-editor form { display: grid; gap: 6px; margin-top: 8px; }
+  .shop-panel .wall-sign-editor label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(64px, 1fr); align-items: center; gap: 8px; }
+  .shop-panel .wall-sign-editor input { min-width: 0; justify-self: start; }
+  .shop-panel .wall-sign-editor input[type="text"] { box-sizing: border-box; width: 100%; font: inherit; color: var(--ui-text); background: #0f0c16; border: 1px solid #3a3452; border-radius: 3px; padding: 3px 6px; }
+  .shop-panel .wall-sign-editor canvas { width: min(100%, 228px); height: auto; image-rendering: pixelated; }
+  .shop-panel .wall-sign-editor button { justify-self: start; }
   .shop-panel .mine .pic { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; background: #1f1a2c; border: 1px solid #2c2640; border-radius: 3px; width: 120px; text-align: center; }
   .shop-panel .mine .pic canvas { width: 48px; height: 60px; }
   .shop-panel .mine .pic .nm { font-size: 11px; color: var(--ui-dim); }

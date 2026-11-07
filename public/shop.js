@@ -10,6 +10,7 @@ import { thumb, drawDeskItem, drawPicture } from './environment.js';
 import { Cat, Dog, Critter } from './characters.js';
 import { coinUrl } from './tokens.js';
 import { makeCanvas, fmtUsd } from './util.js';
+import { WALL_SIGN, DEFAULT_WALL_SIGN, cleanWallSign, drawWallSign } from './wall-sign.js';
 
 /** Снимка -> пикселна картина PIC_W x PIC_H с до 12 цвята (k-means), изцяло в браузъра. */
 async function pixelize(file) {
@@ -161,6 +162,7 @@ export class Shop {
   close() {
     if (this.root.hidden) return;
     this.root.hidden = true;
+    this.wallSignDraft = null;
     this.tokens.setPreview(null);
     document.body.classList.remove('shopping');
     window.pixelOffice?.shop?.(false);
@@ -182,7 +184,7 @@ export class Shop {
     const afford = ITEMS.filter((it) => tab.groups.includes(it.group) && !owns(s, it.id) && it.price <= t.tokens).map((it) => it.id).join();
     const key = [this.tab, JSON.stringify(s.owned), JSON.stringify(s.equipped), JSON.stringify(s.achievements), afford,
       tab.id === 'trophies' ? JSON.stringify(s.stats) + s.lifetime : '', tab.id === 'stats' ? 'stats' : '', JSON.stringify(s.avatar), tab.id === 'weather' ? JSON.stringify(this.weather) : '', JSON.stringify(s.petNames), this.exoSel,
-      tab.id === 'decor' ? (s.officeName || '') + JSON.stringify(s.pictures) : '',
+      tab.id === 'decor' ? JSON.stringify([s.officeName, s.pictures, s.wallSign]) : '',
       tab.id === 'crew' || tab.id === 'avatar' ? (s.crewMe || '') + JSON.stringify(s.crewSeen) + this.crewHere().join() : '',
       tab.id === 'crew' ? JSON.stringify(s.crew) + JSON.stringify(s.crewSeen) + this.crewSel + this.crewHere().join() : ''].join('|');
     if (key === this.key) return;
@@ -424,6 +426,7 @@ export class Shop {
       if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
     };
     el('p', 'hint', sec).textContent = M.nameHint;
+    this.renderWallSign(sec);
     el('h3', null, sec, M.pics);
     const row = el('div', 'pics', sec);
     for (let i = 0; i < PIC_SLOTS; i++) {
@@ -453,7 +456,69 @@ export class Shop {
         rm.onclick = async () => { const r = await be.office?.({ picture: i, pic: null }); if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error); };
       }
     }
-    el('p', 'hint', sec).textContent = M.picHint;
+    el('p', 'hint', sec).textContent = s.wallSign?.enabled ? M.sign.photoHint : M.picHint;
+  }
+
+  renderWallSign(parent) {
+    const s = this.tokens.save, M = T.shop.mine, S = M.sign;
+    const draft = this.wallSignDraft || {
+      ...DEFAULT_WALL_SIGN, title: s.officeName || S.exampleTitle, subtitle: S.exampleSubtitle, ...s.wallSign,
+    };
+    const details = el('details', 'wall-sign-editor', parent);
+    details.open = this.wallSignEditorOpen ?? draft.enabled;
+    details.ontoggle = () => { this.wallSignEditorOpen = details.open; };
+    el('summary', null, details).textContent = S.heading;
+    const form = el('form', null, details);
+    const input = (key, type, label, limit) => {
+      const row = el('label', null, form);
+      el('span', null, row).textContent = label;
+      const field = el('input', null, row);
+      field.type = type;
+      field.name = 'wall-sign-' + key;
+      if (limit) field.maxLength = limit;
+      if (type === 'checkbox') field.checked = draft[key];
+      else field.value = draft[key];
+      field.oninput = () => {
+        draft[key] = type === 'checkbox' ? field.checked : field.value;
+        this.wallSignDraft = draft;
+        drawPreview();
+      };
+    };
+    input('enabled', 'checkbox', S.show);
+    input('title', 'text', S.title, WALL_SIGN.titleMax);
+    input('subtitle', 'text', S.subtitle, WALL_SIGN.subtitleMax);
+    input('titleColor', 'color', S.titleColor);
+    input('subtitleColor', 'color', S.subtitleColor);
+    const preview = makeCanvas(WALL_SIGN.w, WALL_SIGN.h);
+    preview.setAttribute('role', 'img');
+    preview.setAttribute('aria-label', S.preview);
+    form.appendChild(preview);
+    const ctx = preview.getContext('2d');
+    const drawPreview = () => {
+      ctx.clearRect(0, 0, preview.width, preview.height);
+      const sign = cleanWallSign({ ...draft, enabled: false });
+      if (sign) drawWallSign(ctx, 0, 0, { ...sign, title: sign.title || S.title });
+    };
+    drawPreview();
+    const save = el('button', null, form, M.save);
+    save.type = 'submit';
+    save.disabled = !!this.wallSignSaving;
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      if (this.wallSignSaving) return;
+      const sign = cleanWallSign(draft);
+      if (!sign) { this.flash(S.invalid); return; }
+      this.wallSignSaving = save.disabled = true;
+      const result = await this.tokens.backend.office({ wallSign: sign });
+      this.wallSignSaving = save.disabled = false;
+      if (!result.ok) {
+        this.flash(result.error === 'wallSign' ? S.invalid : T.shop.errors[result.error] || result.error);
+      } else if (this.wallSignDraft === draft && JSON.stringify(cleanWallSign(draft)) === JSON.stringify(sign)) {
+        // Keep any edits typed while this save was in flight.
+        this.wallSignDraft = null;
+      }
+      if (!this.root.hidden) { this.key = ''; this.render(); }
+    };
   }
 
   /** Ключовете на колегите, които са в офиса в момента. */

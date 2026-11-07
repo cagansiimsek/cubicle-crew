@@ -364,7 +364,7 @@ export class UI {
   /** Табелата с името на офиса (save.officeName) – DOM върху горния ръб на дъската. */
   syncSign() {
     const name = this.office.officeName || '', b = this.office.room?.board;
-    const show = !!(name && b && this.cssScale >= 1.5 && !PARAMS.overlay);
+    const show = !!(name && b && this.cssScale >= 1.5 && !PARAMS.overlay && !this.office.room.wallSign);
     if (!this.sign) { if (!show) return; this.sign = el('div', 'sign', this.overlay); }
     this.sign.hidden = !show;
     if (!show) return;

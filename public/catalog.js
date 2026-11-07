@@ -1,6 +1,7 @@
 // Каталог на обзавеждането + постижения. Общ за сървъра и клиента (без DOM): цени, слотове и правилата
 // за купуване/слагане се проверяват на едно място. Рисуването на всеки предмет е в environment.js.
 // ВНИМАНИЕ: id-тата са записът в save.json (и бъдещи Steam ключове) – НИКОГА не ги преименувай.
+import { cleanWallSign } from './wall-sign.js';
 
 // ---- слотове: къде се слага предмет от дадена група ----
 // def = безплатният предмет по подразбиране; def: null = слотът може да е празен (вкл./изкл. предмет)
@@ -175,8 +176,15 @@ export function cleanPic(p) {
   for (const ch of px) if (parseInt(ch, 16) >= pal.length) return null;
   return { pal: pal.map((c) => c.toLowerCase()), px };
 }
-/** { name } – табелата; { picture: i, pic | null } – картина i (null = пак постерът). */
+/** Update the brass plaque, a picture slot, or the custom wall sign. */
 export function setOffice(save, b = {}) {
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return { ok: false, error: 'wallSign' };
+  if ('wallSign' in b) {
+    const sign = cleanWallSign(b.wallSign);
+    if (!sign) return { ok: false, error: 'wallSign' };
+    save.wallSign = sign;
+    return { ok: true };
+  }
   if ('picture' in b) {
     const i = Number(b.picture);
     if (!Number.isInteger(i) || i < 0 || i >= PIC_SLOTS) return { ok: false, error: 'picture' };
