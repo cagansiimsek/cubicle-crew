@@ -295,6 +295,48 @@ let live = [], liveKey = '';
 const ocLive = { list: [] }; // статус на OpenCode сесиите – пълни се от watchOpencode в startServer
 const pidOf = new Map(); // сесия -> pid (за „Към терминала“; не се праща към страницата)
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+// Убит процес (затворено IDE, спрян ток) не трие <pid>.json, а след рестарт Windows раздава същия pid на друг
+// процес (svchost…) – kill(pid, 0) минава и призракът стои в офиса. Затова:
+// 1) сесия, стартирана преди зареждането на системата, е мъртва (startedAt < boot);
+// 2) на Windows procStart (FILETIME на стартирането) трябва да съвпада с CreationDate на процеса с този pid
+//    (бърз старт/хибернация не нулира uptime-а, а pid-ът пак е преизползван). Проверката е асинхронна,
+//    една скрита PowerShell заявка за всички нови pid-ове и повторно на 2 мин; докато чака – вярваме на файла.
+const bootMs = () => Date.now() - os.uptime() * 1000;
+const procOk = new Map(); // `${pid}|${procStart}` -> { ok, at }
+const PROC_RECHECK_MS = 120e3;
+let procBusy = false;
+function procCheck(todo) {
+  if (procBusy || !todo.length || process.platform !== 'win32') return;
+  procBusy = true;
+  const filter = todo.map((k) => `ProcessId=${parseInt(k, 10)}`).join(' OR ');
+  const ps = `Get-CimInstance Win32_Process -Filter '${filter}' | ForEach-Object { '{0} {1}' -f $_.ProcessId, $_.CreationDate.ToFileTimeUtc() }`;
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { timeout: 15000, windowsHide: true }, (err, out) => {
+    procBusy = false;
+    if (err) return; // не знаем – оставяме както е
+    const real = new Map();
+    for (const ln of String(out).split(/\r?\n/)) { const m = /^(\d+) (\d+)$/.exec(ln.trim()); if (m) real.set(m[1], BigInt(m[2])); }
+    const at = Date.now();
+    for (const k of todo) {
+      const [pid, start] = k.split('|');
+      const ft = real.get(pid);
+      // 2 s толеранс; няма такъв процес = мъртъв
+      let ok = false;
+      try { ok = ft !== undefined && (ft - BigInt(start) < 20000000n && BigInt(start) - ft < 20000000n); } catch { ok = true; }
+      if (DEBUG && !ok) console.log(`сесия с pid ${pid}: процесът е друг или го няма – старият файл се пренебрегва`);
+      procOk.set(k, { ok, at });
+    }
+    if (todo.some((k) => !procOk.get(k).ok)) scanSessions();
+  });
+}
+// false = файлът е от мъртъв процес; true = жив или още не знаем
+function sameProcess(s, todo) {
+  if (Number.isFinite(s.startedAt) && s.startedAt < bootMs() - 120e3) return false;
+  if (process.platform !== 'win32' || typeof s.procStart !== 'string' || !/^\d{10,20}$/.test(s.procStart)) return true;
+  const k = `${s.pid}|${s.procStart}`;
+  const c = procOk.get(k);
+  if (!c || Date.now() - c.at > PROC_RECHECK_MS) todo.push(k);
+  return c ? c.ok : true;
+}
 // pidDomain (Claude Code ≥ 2.1.3xx): "win32:<машина>", "linux::pid:[…]" – pid от контейнер/VM не е наш процес
 const ownDomains = new Set();
 let nsPid = null;
@@ -319,13 +361,14 @@ function scanSessions() {
   for (const r of folders.roots()) for (const f of read(r.sessions)) files.push({ f, r });
   const list = [];
   const seenPids = new Set();
+  const procTodo = [];
   for (const { f, r } of files) {
     let s, mtime = 0;
     try { s = JSON.parse(fs.readFileSync(f, 'utf8')); mtime = fs.statSync(f).mtimeMs; } catch { continue; }
     if (!s || typeof s.sessionId !== 'string' || !Number.isInteger(s.pid)) continue;
     const dom = typeof s.pidDomain === 'string' ? s.pidDomain : '';
     if (!r || ownDomain(dom)) {
-      if (!alive(s.pid)) continue;
+      if (!alive(s.pid) || !sameProcess(s, procTodo)) continue;
       if (!r && dom) ownDomains.add(dom);
     } else {
       const fresh = Math.max(mtime, lastWrite(s.sessionId));
@@ -347,6 +390,8 @@ function scanSessions() {
     if (typeof s.name === 'string' && s.name) item.name = s.name.slice(0, 40);
     list.push(item);
   }
+  procCheck(procTodo);
+  if (procOk.size > 200) for (const [k, v] of procOk) if (Date.now() - v.at > 10 * PROC_RECHECK_MS) procOk.delete(k);
   for (const k of pidOf.keys()) if (!seenPids.has(k)) pidOf.delete(k);
   for (const pk of sidOfPid.keys()) if (!pids.has(pk)) sidOfPid.delete(pk);
   const cur = new Set(sidOfPid.values());
