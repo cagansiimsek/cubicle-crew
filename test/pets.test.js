@@ -12,6 +12,15 @@ const FREE = ['exotic.fennec', 'exotic.capybara', 'exotic.wombat'];
 const fresh = (over = {}) => ({ tokens: 20000, owned: [], equipped: {}, starter: 'cat', ...over });
 const buySlots = (s, n = 3) => { for (let i = 1; i <= n; i++) assert.equal(buyItem(s, `exotic${i}.extra`).ok, true); };
 
+test('Maltese is a free breed for the existing unlocked dog slot', () => {
+  const s = fresh({ tokens: 0, starter: 'dog' });
+  assert.equal(ITEM['dog.maltese'].price, 0);
+  assert.equal(equipItem(s, 'dog', 'dog.maltese').ok, true);
+  assert.equal(resolveDecor(s.equipped).dog.id, 'dog.maltese');
+  assert.equal(s.tokens, 0);
+  assert.equal(equipItem(fresh(), 'dog', 'dog.maltese').error, 'locked');
+});
+
 test('екзотични места: три, подредени, всяко струва 1000 и не идва с готово животно', () => {
   assert.deepEqual(PET_SLOTS.filter((sl) => SLOTS[sl].pet === 'exotic'), EXO);
   for (const sl of EXO) {

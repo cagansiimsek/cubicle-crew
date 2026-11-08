@@ -5,6 +5,17 @@ import { AVATAR, cleanAv, setAvatar, crewKey, setCrew, seeCrew, CREW_SEEN_MAX, s
 import { SKINS, HAIRS, PANTS, SKIRTS, SHOES, IRIS, ACCENTS, TIGHTS } from '../public/palette.js';
 import { AVATAR_HAIR, AVATAR_TOPS, AVATAR_BOTTOMS, HEADS, BEARDS, DESK_ITEMS, randomAv, avatarLook } from '../public/sprites.js';
 
+test('crew: concurrent actors can save outfits independently, including a long project key', () => {
+  const save = {};
+  const project = 'p:' + 'a'.repeat(60), twin = project + '#10';
+  const first = randomAv(project), second = randomAv(twin);
+  assert.equal(setCrew(save, { key: project, av: first }).ok, true);
+  assert.equal(setCrew(save, { key: twin, av: second, name: 'Second seat' }).ok, true);
+  assert.deepEqual(save.crew[project].av, cleanAv(first));
+  assert.deepEqual(save.crew[twin], { av: cleanAv(second), name: 'Second seat' });
+  assert.equal(setCrew(save, { key: twin, me: true }).ok, false);
+});
+
 test('crew: броят опции в catalog.js съвпада с палитрата и спрайтовете', () => {
   assert.equal(AVATAR.skins, SKINS.length);
   assert.equal(AVATAR.hairs, HAIRS.length);
