@@ -307,7 +307,7 @@ export const ITEMS = [
   I('dog.husky', 'dog', 250, 'Хъски', { c: '#6a7080', hi: '#868c9c', m: '#eef0f4', e: '#545a68', eye: '#4a8fe0', ears: 'up', tail: 'curl', pat: 'mask', p: '#eef0f4' }),
   I('dog.dalmatian', 'dog', 250, 'Далматинец', { c: '#ece8e0', hi: '#fffcf4', m: '#ece8e0', e: '#2a2624', eye: '#2a1a12', ears: 'flop', tail: 'long', pat: 'spots', p: '#24201e' }),
   I('dog.pug', 'dog', 250, 'Мопс', { c: '#d8bc8a', hi: '#ecd4a4', m: '#2e2624', e: '#2e2624', eye: '#1a1210', ears: 'flop', tail: 'curl', legs: 'short', len: -1 }),
-  I('dog.maltese', 'dog', 0, 'Малтийска болонка', { c: '#eeeae4', hi: '#fffdf8', m: '#f8f4ed', e: '#d8d2c8', eye: '#272025', ears: 'flop', tail: 'plume', legs: 'short', len: -1, tall: 1 }),
+  I('dog.maltese', 'dog', 250, 'Малтийска болонка', { c: '#eeeae4', hi: '#fffdf8', m: '#f8f4ed', e: '#d8d2c8', eye: '#272025', ears: 'flop', tail: 'plume', legs: 'short', len: -1, tall: 1 }),
   // изглед през прозорците
   I('window.city', 'window', 0, 'Град', { style: 'city' }),
   I('window.sea', 'window', 500, 'Море', { style: 'sea' }),
