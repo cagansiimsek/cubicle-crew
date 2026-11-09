@@ -307,6 +307,10 @@ const T_BG = {
     updSelf: 'Изтегля се, проверява се и се инсталира върху тази – приложението се рестартира само.', updManual: 'Изтегли инсталатора и го пусни – той обновява старата версия.',
     install: 'Изтегли и инсталирай', download: 'Изтегли', notes: 'Какво има в нея', later: 'По-късно',
     items: {
+      '2.22.1': [
+        ['Кой е в офиса сега', 'Разделът „Екип“ показва най-отгоре хората, които са в офиса в момента – всеки с отделна картичка, дори двама от един проект или два помощника от един вид. Така обличаш точно този, когото виждаш.'],
+        ['Малтийска болонка', 'Нова порода куче в магазина – малка, бяла, с клепнали уши и рунтава опашка. Благодарим на cagansiimsek!'],
+      ],
       '2.22.0': [
         ['Твоят екип', 'Всеки проект вече си има свой човек, а всеки вид помощник (Explore, Plan, твоите собствени агенти) – също. Идват всеки път с едно и също лице и име. В новия раздел „Екип“ в магазина ги преименуваш и обличаш както искаш.'],
         ['Повече за аватара', 'Нови прически, брада и мустаци, шапка с козирка, плетена шапка или слушалки, къс ръкав, цвят на панталона, обувките и очите – и лична вещ на бюрото (снимка, кактус, патенце, глобус…). Същото важи и за колегите.'],
@@ -687,6 +691,10 @@ const T_EN = {
     updSelf: 'It downloads, gets checked and installs over this one – the app restarts by itself.', updManual: 'Download the installer and run it – it updates the old version.',
     install: 'Download and install', download: 'Download', notes: "What's in it", later: 'Later',
     items: {
+      '2.22.1': [
+        ['Who is in the office now', 'The Crew tab shows the people in the office right now at the top – each with its own card, even two from the same project or two helpers of the same kind. So you dress exactly the one you see.'],
+        ['Maltese', 'A new dog breed in the shop – small, white, with floppy ears and a fluffy tail. Thanks to cagansiimsek!'],
+      ],
       '2.22.0': [
         ['Your crew', 'Every project now has its own person, and so does every kind of helper (Explore, Plan, your own agents). They come back with the same face and name every time. Rename them and dress them up in the new Crew tab of the shop.'],
         ['More for your avatar', 'New hairstyles, beards and moustaches, a cap, a beanie or headphones, short sleeves, trouser, shoe and eye colours – and a keepsake on your desk (a photo, a cactus, a rubber duck, a globe…). Your colleagues get all of it too.'],
