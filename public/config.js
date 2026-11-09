@@ -290,7 +290,7 @@ const T_BG = {
     },
     crew: {
       intro: 'Всеки проект си има свой човек, всеки вид помощник (Explore, Plan, твоите агенти) – също. Идват всеки път с едно и също лице. Дай им имена и ги облечи както искаш.',
-      leads: 'Проекти', subs: 'Помощници', here: 'В офиса', you: 'Ти',
+      leads: 'Проекти', subs: 'Помощници', here: 'В офиса', present: 'В офиса сега', you: 'Ти',
       name: 'Име', namePh: (n) => `напр. ${n}`, reset: 'Наново случаен', back: '← Целият екип', edit: 'Промени',
       empty: 'Още никой не е идвал. Щом пуснеш агент, той ще се появи тук.',
       lead: (p) => `Отговаря за ${p}`, sub: (t) => `Помощник · ${t}`,
@@ -671,7 +671,7 @@ const T_EN = {
     },
     crew: {
       intro: 'Every project has its own person, and so does every kind of helper (Explore, Plan, your own agents). They come back with the same face every time. Give them names and dress them up.',
-      leads: 'Projects', subs: 'Helpers', here: 'In the office', you: 'You',
+      leads: 'Projects', subs: 'Helpers', here: 'In the office', present: 'In the office now', you: 'You',
       name: 'Name', namePh: (n) => `e.g. ${n}`, reset: 'Random again', back: '← Whole crew', edit: 'Edit',
       empty: 'Nobody has come in yet. Start an agent and it shows up here.',
       lead: (p) => `Works on ${p}`, sub: (t) => `Helper · ${t}`,
@@ -835,7 +835,7 @@ const T_EN = {
     'cat.tabby': 'Tabby cat', 'cat.tuxedo': 'Tuxedo cat', 'cat.calico': 'Calico cat', 'cat.siamese': 'Siamese cat', 'cat.tortie': 'Tortoiseshell cat',
     'cat1.extra': 'Cat', 'dog.extra': 'Dog',
     'dog.bueno': 'Bueno Mixed', 'dog.beagle': 'Beagle', 'dog.golden': 'Golden retriever', 'dog.black': 'Black labrador', 'dog.dachshund': 'Dachshund', 'dog.corgi': 'Corgi',
-    'dog.husky': 'Husky', 'dog.dalmatian': 'Dalmatian', 'dog.pug': 'Pug',
+    'dog.husky': 'Husky', 'dog.dalmatian': 'Dalmatian', 'dog.pug': 'Pug', 'dog.maltese': 'Maltese',
     'exotic1.extra': 'Exotic slot 1', 'exotic2.extra': 'Exotic slot 2', 'exotic3.extra': 'Exotic slot 3',
     'exotic.fennec': 'Fennec fox – sandy', 'exotic.fennec.cream': 'Fennec fox – cream', 'exotic.fennec.pale': 'Fennec fox – pale', 'exotic.capybara': 'Capybara – brown', 'exotic.capybara.red': 'Capybara – reddish-brown', 'exotic.capybara.yellow': 'Capybara – yellowish-brown', 'exotic.capybara.gray': 'Capybara – gray-brown', 'exotic.wombat': 'Wombat – dark grey', 'exotic.wombat.black': 'Wombat – glossy black', 'exotic.wombat.sandy': 'Wombat – sandy', 'exotic.wombat.cream': 'Wombat – cream', 'exotic.wombat.tan': 'Wombat – tan',
     'season.pumpkins': 'Pumpkins', 'season.tree': 'Christmas tree', 'season.tulips': 'Tulips', 'season.fan': 'Standing fan',

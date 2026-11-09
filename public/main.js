@@ -258,6 +258,7 @@ function frame(now) {
   if (morning?.active && model.agents.size) morning.wake();
   checkSleep(now);
   if (shown) {
+    shop.syncCrewPresence(now);
     const date = nowDate();
     const officeOn = !strip && !morning?.active;
     glView?.show(officeOn);

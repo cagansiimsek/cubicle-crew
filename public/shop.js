@@ -178,13 +178,15 @@ export class Shop {
     this.bal.hidden = prefs.focus;
     for (const b of this.nav.children) { b.classList.toggle('on', b.dataset.tab === this.tab); b.hidden = prefs.focus && b.dataset.tab !== 'weather' && b.dataset.tab !== 'stats'; }
     const tab = TABS.find((x) => x.id === this.tab);
+    const present = tab.id === 'crew' ? this.presentCrew() : null;
     // пълно прерисуване само ако нещо видимо се е променило (иначе посочването "мига")
     const afford = ITEMS.filter((it) => tab.groups.includes(it.group) && !owns(s, it.id) && it.price <= t.tokens).map((it) => it.id).join();
     const key = [this.tab, JSON.stringify(s.owned), JSON.stringify(s.equipped), JSON.stringify(s.achievements), afford,
       tab.id === 'trophies' ? JSON.stringify(s.stats) + s.lifetime : '', tab.id === 'stats' ? 'stats' : '', JSON.stringify(s.avatar), tab.id === 'weather' ? JSON.stringify(this.weather) : '', JSON.stringify(s.petNames), this.exoSel,
       tab.id === 'decor' ? (s.officeName || '') + JSON.stringify(s.pictures) : '',
-      tab.id === 'crew' || tab.id === 'avatar' ? (s.crewMe || '') + JSON.stringify(s.crewSeen) + this.crewHere().join() : '',
-      tab.id === 'crew' ? JSON.stringify(s.crew) + JSON.stringify(s.crewSeen) + this.crewSel + this.crewHere().join() : ''].join('|');
+      tab.id === 'avatar' ? (s.crewMe || '') + JSON.stringify(s.crewSeen) + this.crewHere().join() : '',
+      present ? JSON.stringify([s.crew, s.crewSeen, s.crewMe, this.crewSel, this.tokens.office?.avatarId,
+        [...present].map(([key, a]) => [key, a.id, a.agent.label, a.agent.atype, a.agent.provider])]) : ''].join('|');
     if (key === this.key) return;
     this.key = key;
     const scroll = this.body.scrollTop;
@@ -194,7 +196,7 @@ export class Shop {
     this.body.innerHTML = '';
     if (tab.id === 'trophies') this.renderTrophies();
     else if (tab.id === 'avatar') this.renderAvatar();
-    else if (tab.id === 'crew') this.renderCrew();
+    else if (tab.id === 'crew') this.renderCrew(present);
     else if (tab.id === 'weather') this.renderWeather();
     else if (tab.id === 'stats') this.renderStats();
     else if (tab.id === 'pets') this.renderPets();
@@ -462,12 +464,22 @@ export class Shop {
     return o ? [...o.actors.values()].filter((a) => a.crewBase).map((a) => a.crewBase) : [];
   }
 
+  presentCrew() {
+    const actors = this.tokens.office?.live() || [];
+    return new Map(actors.filter((a) => a.crewKey && !a.agent.leaving && !a.leavingNow).map((a) => [a.crewKey, a]));
+  }
+
+  // Presence can change without a wallet update, even when nobody earns coins.
+  syncCrewPresence(now) {
+    if (this.root.hidden || this.tab !== 'crew' || now < (this.nextCrewRefresh || 0)) return;
+    this.nextCrewRefresh = now + 250;
+    this.render();
+  }
+
   /** Раздел „Екип“: всички колеги (проекти и видове помощници) или редакторът на един. */
-  renderCrew() {
+  renderCrew(here) {
     const s = this.tokens.save, C = T.shop.crew, crew = s.crew || {}, seen = s.crewSeen || {};
-    const o = this.tokens.office, actors = o ? [...o.actors.values()] : [];
-    const here = new Map();
-    for (const a of actors) if (a.crewBase && !here.has(a.crewBase)) here.set(a.crewBase, a);
+    const o = this.tokens.office;
     const labelOf = (k) => {
       const a = here.get(k);
       if (a) return a.agent.subagent ? a.agent.atype || a.agent.provider || k.slice(2) : a.agent.label;
@@ -493,7 +505,7 @@ export class Shop {
         const r = await this.tokens.backend.crew?.({ key: k, name: inp.value });
         if (r && !r.ok) this.flash(T.shop.errors[r.error] || r.error);
       };
-      if (k.startsWith('p:')) {
+      if (k.startsWith('p:') && !k.includes('#')) {
         const isMe = s.crewMe === k;
         const mb = el('button', isMe ? 'meon' : '', sec, isMe ? C.notMe : C.me); mb.type = 'button'; mb.dataset.me = isMe ? '' : k;
         el('p', 'hint', sec).textContent = isMe ? C.meNote : C.avatarNote;
@@ -504,18 +516,18 @@ export class Shop {
       return;
     }
     el('p', 'intro', sec).textContent = C.intro;
-    const keys = new Set([...Object.keys(seen), ...Object.keys(crew), ...here.keys()]);
-    const list = [...keys].filter((k) => /^[pt]:/.test(k))
-      .sort((p, q) => (here.has(q) - here.has(p)) || ((seen[q]?.at || 0) - (seen[p]?.at || 0)) || p.localeCompare(q));
-    if (!list.length) { el('p', 'hint', sec).textContent = C.empty; return; }
-    for (const [title, kind] of [[C.leads, 'p:'], [C.subs, 't:']]) {
-      const ks = list.filter((k) => k.startsWith(kind));
+    const keys = new Set([...Object.keys(seen), ...Object.keys(crew)]);
+    const history = [...keys].filter((k) => /^[pt]:/.test(k) && !here.has(k))
+      .sort((p, q) => ((seen[q]?.at || 0) - (seen[p]?.at || 0)) || p.localeCompare(q));
+    if (!here.size && !history.length) { el('p', 'hint', sec).textContent = C.empty; return; }
+    for (const [title, ks] of [[C.present, [...here.keys()]], [C.leads, history.filter((k) => k.startsWith('p:'))],
+      [C.subs, history.filter((k) => k.startsWith('t:'))]]) {
       if (!ks.length) continue;
       el('h3', null, sec, title);
       const grid = el('div', 'people', sec);
       for (const k of ks) {
-        const mine = s.crewMe === k;
-        const av = mine ? { body: 0, style: 0, top: 0, bottom: 0, ...avatarOf(s) } : avOf(k), a = here.get(k);
+        const a = here.get(k), mine = a ? a.id === o.avatarId : s.crewMe === k;
+        const av = mine ? avatarOf(s) : avOf(k);
         const b = el('button', a ? 'person here' : 'person', grid);
         b.type = 'button'; b.dataset.crewsel = k;
         b.appendChild(this.personCanvas(av, 'stand', 2, a ? STATES[a.vstate]?.color || '#4ac26b' : '#4ac26b'));
